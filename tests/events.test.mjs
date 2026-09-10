@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHarness } from "./harness.mjs";
+import { updateBots } from '../src/actors.js';
 const api = createHarness();
 const nodes = { get: (id) => document.getElementById(id) };
 api.init();
@@ -30,8 +31,18 @@ assert.equal(expired.rewardScale, 1);
 api.beginStage(1);
 assert(api.beginInfection());
 assert(api.G.bots.filter((b) => b.eventSpawn).length > 0);
-assert(api.G.bots.filter((b) => b.eventSpawn).length <= 16);
+assert(api.G.bots.filter((b) => b.eventSpawn).length <= 36);
+for (let i = 0; i < 8; i++) api.updateEvents(1);
+assert(api.G.bots.filter((b) => b.eventSpawn).length > 36);
+assert(api.G.bots.filter((b) => b.eventSpawn).length <= 108);
 const sector = api.G.infection.sector;
+api.G.player.mesh.position.set((sector.minX + sector.maxX) / 2, 0, (sector.minZ + sector.maxZ) / 2);
+updateBots(.05);
+assert(api.G.bots.some((b) => b.eventSpawn && b.swarming), 'Entering infection attracts the horde');
+assert(api.G.bots.every((b) => b.target !== api.G.player), 'Horde does not attack the player');
+api.G.player.mesh.position.set(sector.minX < 0 ? 20 : -20, 0, sector.minZ < 0 ? 20 : -20);
+updateBots(.05);
+assert(api.G.bots.every((b) => !b.swarming), 'Leaving infection ends player attraction');
 assert.equal(api.G.infection.mesh.geometry.parameters.width, 105);
 assert(
   api.G.bots

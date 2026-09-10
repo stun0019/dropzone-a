@@ -78,6 +78,7 @@ export function spawnBot(i, boss = false, eventPos = null) {
     type,
     variant,
     eventSpawn: !!eventPos,
+    orbitPhase: serial * 2.39996,
     sector: eventPos,
     faction: boss ? (variant === 2 ? "soldier" : "zombie") : spec.faction,
     dead: false,
@@ -134,10 +135,16 @@ export function moveEntity(entity, delta) {
 }
 
 export function updateBots(dt) {
+  const zone = runtime.G.infection?.sector;
+  const inside = (p) => zone && p.x >= zone.minX && p.x <= zone.maxX && p.z >= zone.minZ && p.z <= zone.maxZ;
+  const playerInside = inside(runtime.G.player.mesh.position);
   for (const b of runtime.G.bots) {
     if (b.dead || b.airborne) continue;
     const spec = MOB_TYPES[b.type],
       peaceful = !!spec?.peaceful;
+    const frenzy = !!inside(b.mesh.position);
+    const swarm = frenzy && playerInside && b.faction === 'zombie' && b.type !== 'boss';
+    b.swarming = !!swarm;
     const ranged = spec?.range > 10 || (b.type === "boss" && b.variant === 2);
     const toxic =
       b.type === "spitter" || (b.type === "boss" && b.variant === 1);
@@ -147,15 +154,16 @@ export function updateBots(dt) {
     b.rest = Math.max(0, b.rest - dt);
     if (b.target && (b.target.dead || b.engage <= 0)) {
       b.target = null;
-      b.rest = runtime.rand(4, 7);
+      b.rest = frenzy ? 0.15 : runtime.rand(4, 7);
       b.wander = patrolDestination(b);
       b.think = 0;
     }
     if (b.think <= 0) {
-      b.think = runtime.rand(0.22, 0.42);
+      b.think = frenzy ? runtime.rand(.15, .25) : runtime.rand(0.22, 0.42);
+      if (frenzy) b.rest = Math.min(b.rest, .2);
       if (!peaceful && !b.target && b.rest <= 0) {
         b.target = null;
-        let best = 12 * 12;
+        let best = frenzy ? 28 * 28 : 12 * 12;
         for (const o of runtime.G.bots) {
           if (o.dead || o.faction === b.faction || o.faction === "civilian")
             continue;
@@ -165,8 +173,8 @@ export function updateBots(dt) {
             b.target = o;
           }
         }
-        if (b.target) b.engage = runtime.rand(1.2, 2.4);
-        else b.rest = runtime.rand(1.5, 3);
+        if (b.target) b.engage = frenzy ? 5 : runtime.rand(1.2, 2.4);
+        else b.rest = frenzy ? .2 : runtime.rand(1.5, 3);
       }
       if (b.mesh.position.distanceToSquared(b.wander) < 9)
         b.wander = patrolDestination(b);
@@ -174,6 +182,14 @@ export function updateBots(dt) {
       b.dir.copy(destination).sub(b.mesh.position);
       b.dir.y = 0;
       b.dir.normalize();
+      if (swarm) {
+        const angle = b.orbitPhase + runtime.G.time * .22 * b.turnSide;
+        const radius = 4 + (b.orbitPhase % 5);
+        const orbit = runtime.G.player.mesh.position.clone();
+        orbit.x = runtime.clamp(orbit.x + Math.cos(angle) * radius, zone.minX + 2, zone.maxX - 2);
+        orbit.z = runtime.clamp(orbit.z + Math.sin(angle) * radius, zone.minZ + 2, zone.maxZ - 2);
+        b.dir.copy(orbit).sub(b.mesh.position).setY(0).normalize();
+      }
       if (peaceful) {
         const threat = runtime.G.bots.find(
           (o) =>
@@ -195,7 +211,7 @@ export function updateBots(dt) {
             .normalize();
       }
       if (
-        b.target &&
+        !swarm && b.target &&
         ranged &&
         b.mesh.position.distanceToSquared(destination) < 100
       )
@@ -206,7 +222,7 @@ export function updateBots(dt) {
       ? b.mesh.position.distanceTo(b.target.mesh.position)
       : 100;
     const moving =
-      !b.target ||
+      swarm || !b.target ||
       distance > (ranged ? 7 : toxic ? 5 : b.type === "boss" ? 3 : 1.6);
     const travel = moving ? b.dir.clone() : new THREE.Vector3();
     for (const other of runtime.G.bots) {
@@ -214,7 +230,7 @@ export function updateBots(dt) {
       const away = b.mesh.position.clone().sub(other.mesh.position).setY(0),
         distance = away.length();
       const separation = Math.max(
-        3.5,
+        frenzy ? 1.5 : 3.5,
         (b.radius || 0.55) + (other.radius || 0.55) + 1,
       );
       if (distance < separation && distance > 0.01)
@@ -223,7 +239,7 @@ export function updateBots(dt) {
           (1 - distance / separation) * 2.5,
         );
     }
-    if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed);
+    if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.5 : 1));
     const aim = b.target
       ? b.target.mesh.position.clone().sub(b.mesh.position).normalize()
       : b.dir;
@@ -265,6 +281,7 @@ export function updateBots(dt) {
           : ranged
             ? runtime.rand(0.7, 1.2)
             : runtime.rand(1, 1.6);
+      if (frenzy) b.fireCd *= .4;
     }
   }
 }

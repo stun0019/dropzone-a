@@ -258,8 +258,24 @@ export function beginInfection() {
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.copy(pos).setY(0.04);
   runtime.scene.add(mesh);
-  runtime.G.infection = { pos, sector, life: 35, mesh };
-  for (let i = 0; i < 16; i++) spawnBot(i, false, sector);
+  // Child geometry follows the ground plane and is disposed with the event.
+  const border = new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry),
+    new THREE.LineBasicMaterial({ color: 0xcbe955, transparent: true, opacity: .8 }),
+  );
+  mesh.add(border);
+  const particles = new Float32Array(180 * 3);
+  for (let i = 0; i < 180; i++) {
+    particles[i * 3] = runtime.rand(-WORLD / 2, WORLD / 2);
+    particles[i * 3 + 1] = runtime.rand(-WORLD / 2, WORLD / 2);
+    particles[i * 3 + 2] = runtime.rand(.3, 4);
+  }
+  const fogGeometry = new THREE.BufferGeometry();
+  fogGeometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+  const spores = new THREE.Points(fogGeometry, new THREE.PointsMaterial({ color: 0xb4d66a, size: .45, transparent: true, opacity: .28, depthWrite: false }));
+  mesh.add(spores);
+  runtime.G.infection = { pos, sector, life: 35, mesh, spores, waveTimer: 1, serial: 36, limit: 108 };
+  for (let i = 0; i < 36; i++) spawnBot(i, false, sector);
   message("感染爆發 · " + sector.name + " 全區警戒", 3);
   sound("boss");
   return true;
@@ -283,6 +299,14 @@ export function updateEvents(dt) {
   }
   if (runtime.G.infection) {
     runtime.G.infection.life -= dt;
+    const event = runtime.G.infection;
+    event.waveTimer -= dt;
+    if (event.life > 0 && event.waveTimer <= 0) {
+      event.waveTimer = 1;
+      const count = runtime.G.bots.filter((b) => b.eventSpawn).length;
+      for (let i = 0; i < Math.min(12, event.limit - count); i++) spawnBot(event.serial++, false, event.sector);
+    }
+    if (event.spores) event.spores.material.opacity = .22 + Math.sin(runtime.G.time * .7) * .08;
     runtime.G.infection.mesh.material.opacity =
       0.12 + Math.sin(runtime.G.time * 3) * 0.035;
     if (runtime.G.infection.life <= 0) {
