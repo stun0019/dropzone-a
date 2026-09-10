@@ -10,6 +10,7 @@ import {
 import { MOB_TYPES, BOSS_TYPES, TAU } from "./config.js";
 import { centerOf, aimFromScreen, shoot } from "./combat.js";
 import { moveEntity, collides } from "./actors.js";
+import { playAnimation, updateAnimation } from "./assets.js";
 
 export function chooseTarget(dt) {
   if (runtime.G.credits <= runtime.tactics.stop) {
@@ -159,6 +160,7 @@ export function pickHoveredMob() {
 
 export function updatePlayer(dt) {
   const p = runtime.G.player;
+  updateAnimation(p.mesh, dt);
   runtime.G.weaponCds = runtime.G.weaponCds.map((cd) => Math.max(0, cd - dt));
   let x =
     Number(runtime.keys.has("d") || runtime.keys.has("arrowright")) -
@@ -232,7 +234,8 @@ export function updatePlayer(dt) {
       moveEntity(p, move.multiplyScalar(dt * 6.4));
     }
   }
-  for (let i = 0; i < p.mesh.userData.legs.children.length; i++)
+  if (p.mesh.userData.actions) playAnimation(p.mesh, move.lengthSq() > 0.01 ? "walk" : "idle");
+  for (let i = 0; i < (p.mesh.userData.legs?.children || []).length; i++)
     p.mesh.userData.legs.children[i].rotation.x =
       move.lengthSq() > 0.01
         ? Math.sin(runtime.G.time * 11 + i * Math.PI) * 0.35
@@ -276,6 +279,7 @@ export function updatePlayer(dt) {
 export function updateFollowers(dt, snap = false) {
   const p = runtime.G.player;
   for (const f of runtime.G.followers || []) {
+    updateAnimation(f.mesh, dt);
     const offset = new THREE.Vector3(f.side * 2.1, 0, 0.9).applyAxisAngle(
       runtime.UP,
       p.yaw,

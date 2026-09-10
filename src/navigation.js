@@ -3,9 +3,12 @@ import { runtime } from "./runtime.js";
 import { settleCaptures } from "./combat.js";
 import { collides, moveEntity } from "./actors.js";
 import { WORLD } from "./config.js";
+import { updateAnimation, playAnimation } from "./assets.js";
 
 export function disposeMesh(root) {
   root.removeFromParent();
+  // GLB clones share cached geometry/material resources. The cache owns them.
+  if (root.userData?.assetClone) return;
   root.traverse((o) => {
     if (o.geometry) o.geometry.dispose();
     if (o.material) {
@@ -21,7 +24,7 @@ export function recycleMob(b) {
   b.mesh.removeFromParent();
   b.mesh.rotation.set(0, 0, 0);
   b.mesh.scale.setScalar(b.mesh.userData.baseScale || 1);
-  b.mesh.userData.body.material.emissive.setHex(0);
+  if (b.mesh.userData.body?.material?.emissive) b.mesh.userData.body.material.emissive.setHex(0);
   if (runtime.mobPool[b.type].length < 20) runtime.mobPool[b.type].push(b.mesh);
   else disposeMesh(b.mesh);
 }
@@ -309,13 +312,15 @@ export function steer(entity, dir, dt, speed) {
 }
 
 export function animateMob(b, dt, moving) {
+  updateAnimation(b.mesh, dt);
+  if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? "walk" : "idle");
   b.walk += dt * b.speed;
   for (const wheel of b.mesh.userData.wheels || [])
     if (moving) wheel.rotation.x += dt * b.speed * 2;
-  const legs = b.mesh.userData.legs.children;
+  const legs = b.mesh.userData.legs?.children || [];
   for (let i = 0; i < legs.length; i++)
     legs[i].rotation.x = moving ? Math.sin(b.walk * 3 + i * Math.PI) * 0.4 : 0;
   b.hitTime = Math.max(0, (b.hitTime || 0) - dt);
-  b.mesh.userData.body.rotation.x =
+  if (b.mesh.userData.body) b.mesh.userData.body.rotation.x =
     (b.type === "zombie" ? 0.12 : 0) + Math.sin(b.hitTime * 35) * b.hitTime;
 }

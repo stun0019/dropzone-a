@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { TAU, MOB_TYPES, BOSS_TYPES } from "./config.js";
+import { createActorModel } from "./assets.js";
 
 export function mat(color, rough = 0.8, metal = 0.05, emissive = 0) {
   return new THREE.MeshStandardMaterial({
@@ -28,7 +29,9 @@ export function cylinder(r, h, color, sides = 10) {
   return m;
 }
 
-export function makeSoldier(color = 0x334c3b, enemy = false) {
+export function makeSoldier(color = 0x334c3b, enemy = false, modelKey = null) {
+  const asset = modelKey && createActorModel(modelKey);
+  if (asset) return asset;
   const root = new THREE.Group();
   const legs = new THREE.Group();
   const body = box(0.9, 1.25, 0.55, color);
@@ -70,6 +73,8 @@ export function makeSoldier(color = 0x334c3b, enemy = false) {
 }
 
 export function makeVehicle(type) {
+  const asset = createActorModel(type);
+  if (asset) { asset.userData.vehicle = true; return asset; }
   const root = new THREE.Group(),
     heavy = type !== "jeep",
     tank = type === "tank";
@@ -143,6 +148,8 @@ export function makeVehicle(type) {
 
 export function makeMob(type) {
   if (MOB_TYPES[type].vehicle) return makeVehicle(type);
+  const asset = createActorModel(type);
+  if (asset) return asset;
   if (MOB_TYPES[type].peaceful) {
     const root = makeSoldier(type === "villager" ? 0xc19d72 : 0x9a6d45, false);
     root.userData.gun.visible = false;
@@ -206,11 +213,13 @@ export function makeMob(type) {
 
 export function makeBoss(variant = 0) {
   const spec = BOSS_TYPES[variant],
-    root = variant === 2 ? makeSoldier(spec.color, true) : makeZombie(true);
+    root = createActorModel("boss" + variant) || (variant === 2 ? makeSoldier(spec.color, true) : makeZombie(true));
   root.scale.setScalar(spec.scale);
   root.userData.baseScale = spec.scale;
   root.userData.bossVariant = variant;
-  root.userData.body.material.color.setHex(spec.color);
+  const bodyMaterial = root.userData.body?.material;
+  const bodyColor = Array.isArray(bodyMaterial) ? bodyMaterial[0]?.color : bodyMaterial?.color;
+  bodyColor?.setHex(spec.color);
   if (variant === 1) {
     for (const x of [-0.5, 0.5]) {
       const tank = cylinder(0.3, 1.7, 0x9bba30, 8);
@@ -222,7 +231,7 @@ export function makeBoss(variant = 0) {
     const shield = box(1.5, 1.8, 0.28, 0x293646);
     shield.position.set(-0.75, 1.5, -0.65);
     root.add(shield);
-    root.userData.gun.scale.set(2, 2, 1.6);
+    root.userData.gun?.scale.set(2, 2, 1.6);
   }
   for (const side of [-1, 1]) {
     const armor = box(0.65, 0.45, 0.9, 0x322d36);

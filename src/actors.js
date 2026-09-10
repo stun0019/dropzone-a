@@ -7,6 +7,7 @@ import { sound } from "./audio.js";
 import { patrolDestination } from "./player.js";
 import { steer, animateMob, visibleTarget } from "./navigation.js";
 import { makeBeam, impactEffect } from "./combat.js";
+import { playAnimation } from "./assets.js";
 
 export function randomSpawn(min = 12, max = WORLD * 0.84) {
   const a = runtime.rand(0, TAU),
@@ -99,6 +100,7 @@ export function spawnBot(i, boss = false, eventPos = null) {
     hitTime: 0,
   });
   runtime.G.alive++;
+  playAnimation(mesh, "idle");
   if (boss) {
     runtime.G.bossSerial++;
     message("BOSS 出現 · " + BOSS_TYPES[variant].name, 2.5);

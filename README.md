@@ -35,6 +35,8 @@ pnpm preview
 | `src/session.js` | 開始、結束、換關、生成節奏 |
 | `src/world.js` | 地形、建物、樹木、關卡配色 |
 | `src/models.js` | 程序化角色、載具及材質 |
+| `src/assets.js` | GLTFLoader、模型快取、GLB clone、武器掛載及 fallback |
+| `src/animation.js` | AnimationMixer、動作辨識、playAnimation |
 | `src/actors.js` | MOB 生成、行為與碰撞 |
 | `src/navigation.js` | 尋路、避障及目前共用的回收工具 |
 | `src/player.js` | 玩家、隨從、AUTO 選敵、鎖定 |
@@ -47,6 +49,25 @@ pnpm preview
 | `src/ui.js` | WebGL UI、戰術面板及觸控命中區 |
 | `styles/game.css` | 頁面及既有相容 UI 樣式 |
 | `tests/` | 對實際模組執行的事件、結算與 UI 行為回歸測試 |
+
+## GLB 模型
+
+模型放在 `public/assets/models/`。目前沒有提供任何 GLB 時，所有角色和武器會自動使用既有程序化模型，遊戲仍可啟動。
+
+```text
+public/assets/models/
+├─ player/player.glb
+├─ enemies/zombie.glb, soldier.glb, brute.glb, spitter.glb
+├─ bosses/armor-tyrant.glb, toxic-beast.glb, heavy-warlord.glb
+├─ vehicles/jeep.glb, tank.glb
+└─ weapons/rifle.glb, laser.glb, shotgun.glb, rocket.glb, grenade.glb
+```
+
+所有路徑及比例集中在 `src/config.js` 的 `MODEL_CONFIG`。檔名需與設定一致；要新增角色，先在 `MODEL_CONFIG` 新增 key 和 path，再讓 `MOB_TYPES` 或 `BOSS_TYPES` 使用該 key。要新增武器，在 `MODEL_CONFIG` 的 `weapons` 路徑對應 key，`events.js` 會在模型可用時自動掛載，沒有掛點則使用 local mount 設定。
+
+模型可包含 `Idle`、`Walk`、`Run`、`Shoot`、`Hit`、`Death` clip。載入器會忽略大小寫、底線、空白及常見 Mixamo 前綴；每個角色獨立建立 `AnimationMixer`。武器掛點可命名為 `GunMount`、`WeaponMount`、`RightHand` 或 `Hand_R`。
+
+啟動時會先預載入 `MODEL_CONFIG` 中的所有模型並顯示 `Loading Models... n / total`。缺檔或載入錯誤會記錄為 fallback，完成後才解鎖 DEPLOY；同一 GLB 只下載一次，生成時使用快取 clone。GLB clone 不會在角色回收時釋放共享 geometry/material。
 
 ## 維護約定
 

@@ -85,12 +85,12 @@ export function startGame() {
     displayWins: 0,
   };
 
-  const mesh = makeSoldier(0x385a40, false);
+  const mesh = makeSoldier(0x385a40, false, "player");
   mesh.position.set(0, 0, 28);
   runtime.scene.add(mesh);
   runtime.G.player = { mesh, vel: new THREE.Vector3(), yaw: Math.PI };
   runtime.G.followers = [-1, 1].map((side) => {
-    const mesh = makeSoldier(0x3c6970, false);
+    const mesh = makeSoldier(0x3c6970, false, "player");
     runtime.scene.add(mesh);
     return {
       mesh,

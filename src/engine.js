@@ -96,11 +96,13 @@ export function step(dt) {
 
   for (const b of runtime.G.bots) {
     if (b.dead) continue;
-    b.mesh.userData.body.material.emissive.multiplyScalar(Math.pow(0.02, dt));
+    const material = b.mesh.userData.body?.material;
+    const emissive = Array.isArray(material) ? material[0]?.emissive : material?.emissive;
+    emissive?.multiplyScalar(Math.pow(0.02, dt));
   }
-  runtime.G.player.mesh.userData.body.material.emissive.multiplyScalar(
-    Math.pow(0.018, dt),
-  );
+  const playerMaterial = runtime.G.player.mesh.userData.body?.material;
+  const playerEmissive = Array.isArray(playerMaterial) ? playerMaterial[0]?.emissive : playerMaterial?.emissive;
+  playerEmissive?.multiplyScalar(Math.pow(0.018, dt));
 
   if (runtime.G.messageTime > 0) {
     runtime.G.messageTime -= dt;

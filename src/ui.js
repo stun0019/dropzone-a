@@ -395,6 +395,9 @@ export function drawNativeUI(now) {
     const lines =
       runtime.state === "menu"
         ? [
+            runtime.assetsReady
+              ? "模型載入完成 · 可部署"
+              : `Loading Models... ${runtime.assets.loaded || 0} / ${runtime.assets.total || 0}`,
             "WASD / 搖桿：移動",
             "游標 / 觸控：瞄準射擊",
             "AUTO：開啟戰術設定",
@@ -410,12 +413,17 @@ export function drawNativeUI(now) {
           ];
     lines.forEach((line, i) => uiText(line, 832, 261 + i * 34, 17, "#b6c9d0"));
     uiButton(
-      runtime.state === "menu" ? "部署 / START" : "再次部署",
+      runtime.state === "menu"
+        ? runtime.assetsReady
+          ? "部署 / START"
+          : "載入模型中..."
+        : "再次部署",
       830,
       466,
       318,
       56,
       () => {
+        if (runtime.state === "menu" && !runtime.assetsReady) return;
         runtime.tacticalPanel = false;
         startGame();
       },

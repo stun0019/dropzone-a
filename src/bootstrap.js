@@ -10,6 +10,7 @@ import { resize, loop } from "./engine.js";
 import { resetInput } from "./navigation.js";
 import { createWorld } from "./world.js";
 import { initNativeUI } from "./ui.js";
+import { preloadModels } from "./assets.js";
 
 export function initializeRuntime() {
   runtime.$ = (id) => document.getElementById(id);
@@ -73,6 +74,8 @@ export function initializeRuntime() {
   runtime.beamPool = { player: [], enemy: [] };
   runtime.impactPool = [];
   runtime.hudElapsed = 0;
+  runtime.assetsReady = false;
+  runtime.assets = { loaded: 0, total: 0, failures: 0, ready: false };
   runtime.$("audioButton").addEventListener("click", () => {
     runtime.gameAudio.enabled = !runtime.gameAudio.enabled;
     runtime.$("audioButton").textContent = runtime.gameAudio.enabled
@@ -200,7 +203,7 @@ export function initializeRuntime() {
     runtime.mobileFiring = false;
     message(runtime.G.auto ? "AUTO 搜敵啟動" : "AUTO 關閉", 0.9);
   };
-  runtime.$("start").onclick = startGame;
+  runtime.$("start").onclick = () => { if (runtime.assetsReady) startGame(); };
   runtime.$("again").onclick = startGame;
   runtime.$("back").onclick = () => {
     runtime.state = "menu";
@@ -233,6 +236,14 @@ export function startApplication() {
   createWorld();
   initNativeUI();
   resize();
-  runtime.$("load").textContent = "系統就緒 / TWO STAGES";
+  runtime.$("load").textContent = "Loading Models... 0 / 0";
+  preloadModels((loaded, total, key, fallback) => {
+    runtime.$("load").textContent = `Loading Models... ${loaded} / ${total}${fallback ? " · fallback" : ""}`;
+    runtime.nativeUI.stamp = 0;
+  }).then((result) => {
+    runtime.assetsReady = true;
+    runtime.$("load").textContent = result.failures.size ? `系統就緒 · fallback ${result.failures.size}` : "系統就緒 / TWO STAGES";
+    runtime.nativeUI.stamp = 0;
+  });
   requestAnimationFrame(loop);
 }

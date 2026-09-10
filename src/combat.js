@@ -4,6 +4,7 @@ import { recycleMob, sightDistance, disposeMesh } from "./navigation.js";
 import { message, showHit } from "./hud.js";
 import { WEAPON_RATES } from "./config.js";
 import { sound } from "./audio.js";
+import { playAnimation } from "./assets.js";
 import { captureProbability, rollMobLoot } from "./economy.js";
 import { killBot } from "./session.js";
 import { mat } from "./models.js";
@@ -235,6 +236,7 @@ export function shoot(shooter, dir, isPlayer = false) {
     return;
   }
   const bet = runtime.G.bet;
+  playAnimation(shooter.mesh, "shoot");
   runtime.G.credits -= bet;
   runtime.G.wagered += bet;
   runtime.G.fireCd += 1 / WEAPON_RATES[runtime.G.weapons[0]];
@@ -302,7 +304,7 @@ export function shoot(shooter, dir, isPlayer = false) {
     runtime.G.eligibleWagered += bet;
     for (const [b, delay] of entries) {
       b.hitTime = 0.18;
-      b.mesh.userData.body.material.emissive.setHex(0xffffff);
+      if (b.mesh.userData.body?.material?.emissive) b.mesh.userData.body.material.emissive.setHex(0xffffff);
       if (Math.random() < captureProbability(b, entries.size)) {
         b.pendingCapture = true;
         runtime.G.resolutions.push({

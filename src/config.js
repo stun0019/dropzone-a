@@ -153,3 +153,27 @@ export const MOB_TYPES = {
 };
 
 export const MOB_KEYS = Object.keys(MOB_TYPES);
+
+// Runtime model overrides. Files are optional: when a GLB is absent or fails
+// to load, models.js keeps using its procedural fallback.
+export const MODEL_CONFIG = {
+  player: { path: "./assets/models/player/player.glb", scale: 1, rotation: [0, 0, 0] },
+  zombie: { path: "./assets/models/enemies/zombie.glb", scale: 1 },
+  soldier: { path: "./assets/models/enemies/soldier.glb", scale: 1 },
+  brute: { path: "./assets/models/enemies/brute.glb", scale: 1 },
+  spitter: { path: "./assets/models/enemies/spitter.glb", scale: 1 },
+  shield: { path: "./assets/models/enemies/shield.glb", scale: 1 },
+  sniper: { path: "./assets/models/enemies/sniper.glb", scale: 1 },
+  jeep: { path: "./assets/models/vehicles/jeep.glb", scale: 1 },
+  tank: { path: "./assets/models/vehicles/tank.glb", scale: 1 },
+  scavenger: { path: "./assets/models/enemies/scavenger.glb", scale: 1 },
+  villager: { path: "./assets/models/enemies/villager.glb", scale: 1 },
+  boss0: { path: "./assets/models/bosses/armor-tyrant.glb", scale: 2 },
+  boss1: { path: "./assets/models/bosses/toxic-beast.glb", scale: 2.15 },
+  boss2: { path: "./assets/models/bosses/heavy-warlord.glb", scale: 2.3 },
+  rifle: { path: "./assets/models/weapons/rifle.glb", scale: 1 },
+  laser: { path: "./assets/models/weapons/laser.glb", scale: 1 },
+  shotgun: { path: "./assets/models/weapons/shotgun.glb", scale: 1 },
+  rocket: { path: "./assets/models/weapons/rocket.glb", scale: 1 },
+  grenade: { path: "./assets/models/weapons/grenade.glb", scale: 1 },
+};

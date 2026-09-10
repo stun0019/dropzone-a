@@ -6,6 +6,7 @@ import { collides, spawnBot } from "./actors.js";
 import { box, mat } from "./models.js";
 import { feed, message } from "./hud.js";
 import { sound } from "./audio.js";
+import { attachWeapon } from "./assets.js";
 
 export function clearSupply() {
   for (const s of runtime.G.supplies) {
@@ -128,7 +129,9 @@ export function updateSupply(dt) {
 export function updateWeaponModels() {
   [runtime.G.player, ...runtime.G.followers].forEach((member, index) => {
     const weapon = runtime.G.weapons[index],
-      gun = member.mesh.userData.gun;
+    gun = member.mesh.userData.gun;
+    if (attachWeapon(member, weapon)) return;
+    if (!gun) return;
     gun.scale.set(
       weapon === "rocket"
         ? 3

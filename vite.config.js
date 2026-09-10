@@ -7,7 +7,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve("index.html"),
-        legacy: resolve("dropzone-lite.html"),
       },
       output: { manualChunks: { three: ["three"] } },
     },
