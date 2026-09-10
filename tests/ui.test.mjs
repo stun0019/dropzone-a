@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { createHarness } from "./harness.mjs";
+const api = createHarness();
+api.init();
+assert(api.nativeUI.scene.children.length === 1);
+api.drawNativeUI(100);
+assert(api.nativeUI.hits.length >= 4);
+api.open();
+const time = api.G.stageTime,
+  credits = api.G.credits;
+api.step(1);
+assert.equal(api.G.stageTime, time);
+assert.equal(api.G.credits, credits);
+api.drawNativeUI(200);
+assert(api.nativeUI.hits.length > 10);
+api.tab(1);
+api.drawNativeUI(300);
+assert(api.nativeUI.hits.length > 20);
+api.close();
+api.G.auto = true;
+api.tactics.selected.clear();
+api.tactics.fallback = false;
+api.G.searchCd = 0;
+assert.equal(api.chooseTarget(0.3), null);
+api.tactics.selected.add("tank");
+api.G.searchCd = 0;
+assert.equal(api.chooseTarget(0.3).type, "tank");
+api.tactics.move = false;
+api.tactics.fire = false;
+const pos = api.G.player.mesh.position.clone();
+api.updatePlayer(0.1);
+assert(api.G.player.mesh.position.equals(pos));
+assert.equal(api.G.credits, credits);
+api.tactics.stop = api.G.credits;
+api.chooseTarget(0.3);
+assert.equal(api.G.auto, false);
+api.menu();
+api.drawNativeUI(400);
+assert(api.nativeUI.hits.length === 1);
+api.result();
+api.drawNativeUI(500);
+assert(api.nativeUI.hits.length === 1);
+console.log(
+  "PASS: WebGL UI initialization/drawing, HUD/menu/results, both tactic tabs, pause, target filtering, movement/fire off, balance cutoff.",
+);

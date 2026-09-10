@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <title>DROPZONE — 捕獲戰區</title>
+
+    <script type="module" crossorigin src="./assets/three-Y_ltDmwK.js"></script>
+    <script type="module" crossorigin src="./assets/main-ClLDS2oF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-D4nAlEKD.css">
+  </head>
+  <body>
+    <main id="game">
+      <canvas id="view" aria-label="第三人稱迷你大逃殺遊戲"></canvas>
+      <div id="shade"></div>
+      <div id="damageFlash"></div>
+      <div id="damageArrow"></div>
+      <div id="floaters"></div>
+      <div class="hud">
+        <div class="top">
+          <div class="brand">DROP<span>ZONE</span></div>
+          <div id="zoneBox">
+            <div id="stageLabel">STAGE 1 / 2</div>
+            <div id="zoneTime">04:00</div>
+            <div id="stageTrack"><div id="stageProgress"></div></div>
+          </div>
+          <div class="stats">
+            <div><strong id="alive">0</strong> 敵人</div>
+            <div id="kills">擊倒 0</div>
+          </div>
+        </div>
+        <canvas id="map" width="180" height="180"></canvas>
+        <button id="audioButton" aria-label="切換音樂音效">聲音 ON</button>
+        <div id="supplyAlert" hidden>空投待回收</div>
+        <div id="supplyHud">
+          <strong id="supplyProgress">空投情報 0 / 100</strong
+          ><span id="supplyHint">捕獲敵人以取得情報</span
+          ><small id="weaponStatus">主火力：玩家 / 步槍</small>
+        </div>
+        <div id="feed"></div>
+        <div id="message"></div>
+        <div id="eventHud"></div>
+        <div id="crosshair"></div>
+        <div id="hitmark"></div>
+        <div id="lockTarget"><span id="lockName">LOCK</span></div>
+        <div id="economy">
+          <div class="metal betPanel">
+            <div class="panelTitle">BET</div>
+            <div class="betControls">
+              <button id="betDown">−</button><strong id="betValue">1</strong
+              ><button id="betUp">+</button>
+            </div>
+          </div>
+          <div class="metal playerPanel">
+            <div class="avatar">P1</div>
+            <div class="playerName">PLAYER_08352</div>
+            <div class="credits">
+              <small>玩家點數</small><span id="credits">200,000</span>
+            </div>
+            <div class="winBox">
+              <small>總贏分</small><strong id="winTotal">0</strong
+              ><small id="lastOdds">等待捕獲</small>
+            </div>
+          </div>
+          <div class="metal autoPanel">
+            <div class="panelTitle">AUTO</div>
+            <button id="autoButton">OFF</button>
+          </div>
+        </div>
+      </div>
+      <div id="stageCurtain">
+        <div>
+          <strong id="stageClear">第一關完成</strong
+          ><span id="nextStage">距離 00:05 到下關卡</span>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="joy" id="joy"><div id="stick"></div></div>
+        <div class="actions">
+          <button class="round" id="fire">射擊</button>
+        </div>
+      </div>
+      <section class="overlay" id="menu">
+        <div>
+          <div class="eyebrow">TACTICAL CAPTURE / 02 SECTORS</div>
+          <h1>DROP<span>ZONE</span></h1>
+          <p class="copy">
+            兩個四分鐘戰區，殭屍與士兵正在彼此交火。 選擇 BET 親自狩獵，或啟動
+            AUTO 搜敵、追擊與射擊。
+          </p>
+        </div>
+        <div class="card">
+          <h2>快速部署</h2>
+          <p>
+            WASD／方向鍵：移動 滑鼠：瞄準　按住左鍵：射擊
+            手機：左搖桿移動，右側按鍵操作
+          </p>
+          <p>
+            每次命中都有機會捕獲，敵人不會攻擊玩家。情報累積 100
+            點後，依雷達前往空投，靠近即可領取武器。有效命中理論回報
+            98.5%，空射仍扣 BET。
+          </p>
+          <button class="start" id="start">開始空投 / DEPLOY</button>
+          <div class="load" id="load">載入 Three.js 中…</div>
+        </div>
+      </section>
+      <section class="overlay" id="result" hidden>
+        <div>
+          <div class="eyebrow" id="resultTag">MATCH REPORT</div>
+          <h1 id="resultTitle">任務結束</h1>
+          <p class="copy" id="resultText"></p>
+        </div>
+        <div class="card">
+          <h2>戰鬥紀錄</h2>
+          <p id="resultStats"></p>
+          <button class="start" id="again">再次部署</button>
+          <button class="secondary" id="back">返回大廳</button>
+        </div>
+      </section>
+    </main>
+    <div id="rotate">請橫放手機遊玩</div>
+
+  </body>
+</html>
