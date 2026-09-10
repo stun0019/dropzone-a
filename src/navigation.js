@@ -321,6 +321,6 @@ export function animateMob(b, dt, moving) {
   for (let i = 0; i < legs.length; i++)
     legs[i].rotation.x = moving ? Math.sin(b.walk * 3 + i * Math.PI) * 0.4 : 0;
   b.hitTime = Math.max(0, (b.hitTime || 0) - dt);
-  if (b.mesh.userData.body) b.mesh.userData.body.rotation.x =
+  if (!b.mesh.userData.assetClone && b.mesh.userData.body) b.mesh.userData.body.rotation.x =
     (b.type === "zombie" ? 0.12 : 0) + Math.sin(b.hitTime * 35) * b.hitTime;
 }

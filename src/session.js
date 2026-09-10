@@ -86,11 +86,17 @@ export function startGame() {
   };
 
   const mesh = makeSoldier(0x385a40, false, "player");
+  const teamRing = new THREE.Mesh(new THREE.RingGeometry(.85, 1.03, 40), new THREE.MeshBasicMaterial({color:0x48dbff, transparent:true, opacity:.85, depthWrite:false}));
+  teamRing.rotation.x = -Math.PI / 2;
+  teamRing.position.y = .055;
+  mesh.add(teamRing);
   mesh.position.set(0, 0, 28);
   runtime.scene.add(mesh);
   runtime.G.player = { mesh, vel: new THREE.Vector3(), yaw: Math.PI };
   runtime.G.followers = [-1, 1].map((side) => {
     const mesh = makeSoldier(0x3c6970, false, "player");
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.65, .78, 32), new THREE.MeshBasicMaterial({color:0x63bfff, transparent:true, opacity:.55, depthWrite:false}));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = .055; mesh.add(ring);
     runtime.scene.add(mesh);
     return {
       mesh,

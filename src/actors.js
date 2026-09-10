@@ -138,12 +138,18 @@ export function updateBots(dt) {
   const zone = runtime.G.infection?.sector;
   const inside = (p) => zone && p.x >= zone.minX && p.x <= zone.maxX && p.z >= zone.minZ && p.z <= zone.maxZ;
   const playerInside = inside(runtime.G.player.mesh.position);
+  // Limit attraction locally; the rest of the outbreak continues roaming.
+  const attracted = playerInside ? runtime.G.bots
+    .filter(b => !b.dead && !b.airborne && b.faction === 'zombie' && b.type !== 'boss' && inside(b.mesh.position))
+    .sort((a,b) => a.mesh.position.distanceToSquared(runtime.G.player.mesh.position) - b.mesh.position.distanceToSquared(runtime.G.player.mesh.position))
+    .slice(0, 18) : [];
+  const slots = new Map(attracted.map((b, i) => [b, i]));
   for (const b of runtime.G.bots) {
     if (b.dead || b.airborne) continue;
     const spec = MOB_TYPES[b.type],
       peaceful = !!spec?.peaceful;
     const frenzy = !!inside(b.mesh.position);
-    const swarm = frenzy && playerInside && b.faction === 'zombie' && b.type !== 'boss';
+    const swarm = slots.has(b);
     b.swarming = !!swarm;
     const ranged = spec?.range > 10 || (b.type === "boss" && b.variant === 2);
     const toxic =
@@ -183,8 +189,9 @@ export function updateBots(dt) {
       b.dir.y = 0;
       b.dir.normalize();
       if (swarm) {
-        const angle = b.orbitPhase + runtime.G.time * .22 * b.turnSide;
-        const radius = 4 + (b.orbitPhase % 5);
+        const slot = slots.get(b);
+        const angle = (slot % 9) * TAU / 9 + runtime.G.time * .08 + (slot >= 9 ? .35 : 0);
+        const radius = slot < 9 ? 10 : 17;
         const orbit = runtime.G.player.mesh.position.clone();
         orbit.x = runtime.clamp(orbit.x + Math.cos(angle) * radius, zone.minX + 2, zone.maxX - 2);
         orbit.z = runtime.clamp(orbit.z + Math.sin(angle) * radius, zone.minZ + 2, zone.maxZ - 2);
@@ -230,7 +237,7 @@ export function updateBots(dt) {
       const away = b.mesh.position.clone().sub(other.mesh.position).setY(0),
         distance = away.length();
       const separation = Math.max(
-        frenzy ? 1.5 : 3.5,
+        frenzy ? 3 : 3.5,
         (b.radius || 0.55) + (other.radius || 0.55) + 1,
       );
       if (distance < separation && distance > 0.01)
@@ -239,7 +246,11 @@ export function updateBots(dt) {
           (1 - distance / separation) * 2.5,
         );
     }
-    if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.5 : 1));
+    if (swarm) {
+      const away = b.mesh.position.clone().sub(runtime.G.player.mesh.position).setY(0);
+      if (away.lengthSq() < 64 && away.lengthSq() > .01) travel.addScaledVector(away.normalize(), 3);
+    }
+    if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.25 : 1));
     const aim = b.target
       ? b.target.mesh.position.clone().sub(b.mesh.position).normalize()
       : b.dir;

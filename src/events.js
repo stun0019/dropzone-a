@@ -274,8 +274,8 @@ export function beginInfection() {
   fogGeometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
   const spores = new THREE.Points(fogGeometry, new THREE.PointsMaterial({ color: 0xb4d66a, size: .45, transparent: true, opacity: .28, depthWrite: false }));
   mesh.add(spores);
-  runtime.G.infection = { pos, sector, life: 35, mesh, spores, waveTimer: 1, serial: 36, limit: 108 };
-  for (let i = 0; i < 36; i++) spawnBot(i, false, sector);
+  runtime.G.infection = { pos, sector, life: 35, mesh, spores, waveTimer: 2, serial: 24, limit: 72 };
+  for (let i = 0; i < 24; i++) spawnBot(i, false, sector);
   message("感染爆發 · " + sector.name + " 全區警戒", 3);
   sound("boss");
   return true;
@@ -302,9 +302,9 @@ export function updateEvents(dt) {
     const event = runtime.G.infection;
     event.waveTimer -= dt;
     if (event.life > 0 && event.waveTimer <= 0) {
-      event.waveTimer = 1;
+      event.waveTimer = 2;
       const count = runtime.G.bots.filter((b) => b.eventSpawn).length;
-      for (let i = 0; i < Math.min(12, event.limit - count); i++) spawnBot(event.serial++, false, event.sector);
+      for (let i = 0; i < Math.min(6, event.limit - count); i++) spawnBot(event.serial++, false, event.sector);
     }
     if (event.spores) event.spores.material.opacity = .22 + Math.sin(runtime.G.time * .7) * .08;
     runtime.G.infection.mesh.material.opacity =

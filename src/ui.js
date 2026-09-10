@@ -56,11 +56,17 @@ export function uiText(
   c.fillStyle = color;
   c.textAlign = align;
   c.textBaseline = "middle";
+  if (bold || size >= 24) {
+    c.strokeStyle = '#102238'; c.lineWidth = size >= 30 ? 4 : 2;
+    c.lineJoin = 'round'; c.strokeText(String(text), x, y);
+  }
   c.fillText(String(text), x, y);
 }
 
 export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
   const c = runtime.nativeUI.ctx;
+  c.save();
+  c.shadowColor = '#07112388'; c.shadowBlur = 8; c.shadowOffsetY = 5;
   c.beginPath();
   c.moveTo(x + 12, y);
   c.lineTo(x + w, y);
@@ -70,13 +76,16 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
   c.lineTo(x, y + 12);
   c.closePath();
   const gradient = c.createLinearGradient(x, y, x, y + h);
-  gradient.addColorStop(0, fill);
-  gradient.addColorStop(1, "#09131de8");
+  gradient.addColorStop(0, '#315685f5');
+  gradient.addColorStop(.15, '#24416bf5');
+  gradient.addColorStop(1, '#172b4bf5');
   c.fillStyle = gradient;
   c.fill();
-  c.strokeStyle = accent;
-  c.lineWidth = 1;
+  c.shadowBlur = 0; c.shadowOffsetY = 0;
+  c.strokeStyle = '#071a32';
+  c.lineWidth = 5;
   c.stroke();
+  c.strokeStyle = accent; c.lineWidth = 2; c.stroke();
   c.fillStyle = accent;
   c.fillRect(x + 14, y, 32, 2);
   c.save();
@@ -93,6 +102,7 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
     c.fillRect(px, y + h - 8, 2, 2);
   }
   c.restore();
+  c.restore();
 }
 
 export function uiButton(label, x, y, w, h, fn, active = false) {
@@ -104,12 +114,21 @@ export function uiButton(label, x, y, w, h, fn, active = false) {
     active ? "#f2bd65" : "#486776",
     active ? "#5a4229f2" : "#1b3040f2",
   );
+  const c = runtime.nativeUI.ctx;
+  const face = c.createLinearGradient(0, y + 3, 0, y + h - 4);
+  face.addColorStop(0, active ? '#ffe994' : '#75cbff');
+  face.addColorStop(.18, active ? '#f8be3f' : '#399de9');
+  face.addColorStop(1, active ? '#d17b14' : '#2062b6');
+  c.fillStyle = face;
+  c.fillRect(x + 5, y + 5, w - 10, h - 12);
+  c.fillStyle = active ? '#a25c0e' : '#124780';
+  c.fillRect(x + 5, y + h - 8, w - 14, 4);
   uiText(
     label,
     x + w / 2,
     y + h / 2,
     17,
-    active ? "#ffe1a1" : "#d4e1e7",
+    '#ffffff',
     "center",
     true,
   );
@@ -377,16 +396,16 @@ export function drawNativeUI(now) {
   c.clearRect(0, 0, 1280, 720);
   if (runtime.state === "menu" || runtime.state === "result") {
     const shade = c.createLinearGradient(0, 0, 1280, 0);
-    shade.addColorStop(0, "#061320f5");
-    shade.addColorStop(1, "#06132066");
+    shade.addColorStop(0, "#153966d9");
+    shade.addColorStop(1, "#14336222");
     c.fillStyle = shade;
     c.fillRect(0, 0, 1280, 720);
     for (let i = 0; i < 12; i++) {
       c.fillStyle = "#89b3bf08";
       c.fillRect(0, i * 64, 1280, 1);
     }
-    uiText("TACTICAL CAPTURE / TWO SECTORS", 90, 155, 17, "#c89b60");
-    uiText("DROPZONE", 84, 242, 86, "#e9eee8", "left", true);
+    uiText("三人小隊 / 戰區獵捕", 90, 155, 20, "#ffe3a0", 'left', true);
+    uiText("DROPZONE", 84, 242, 86, "#fff3c2", "left", true);
     uiText("戰區獵捕行動", 92, 327, 31, "#aac8cd");
     uiText(
       runtime.state === "menu"
@@ -416,8 +435,7 @@ export function drawNativeUI(now) {
             "游標 / 觸控：瞄準射擊",
             "AUTO：開啟戰術設定",
             "空投：靠近後隨機裝備",
-            "有效命中理論回報 98.5%",
-            "空射仍扣 BET",
+            "有效命中回報 98.5% · 空射扣 BET",
           ]
         : [
             "捕獲目標  " + runtime.G.kills,
@@ -425,7 +443,7 @@ export function drawNativeUI(now) {
             "剩餘點數  " + runtime.G.credits.toLocaleString(),
             "作戰時間  " + Math.floor(runtime.G.time) + " 秒",
           ];
-    lines.forEach((line, i) => uiText(line, 832, 261 + i * 34, 17, "#b6c9d0"));
+    lines.forEach((line, i) => uiText(line, 832, 255 + i * 30, 16, "#e2edf8"));
     uiButton(
       runtime.state === "menu"
         ? runtime.assetsReady
@@ -450,11 +468,11 @@ export function drawNativeUI(now) {
     uiPanel(518, 14, 244, 65, "#b59a68");
     uiText("STAGE 0" + runtime.G.stage + " / 02", 537, 34, 12, "#9bb2b9");
     uiText(
-      Math.floor(runtime.G.stageTime / 60)
+      Math.floor(Math.ceil(runtime.G.stageTime) / 60)
         .toString()
         .padStart(2, "0") +
         ":" +
-        Math.ceil(runtime.G.stageTime % 60)
+        (Math.ceil(runtime.G.stageTime) % 60)
           .toString()
           .padStart(2, "0"),
       740,

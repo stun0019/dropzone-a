@@ -6,8 +6,8 @@ import { surfaceTexture, addRoadPaint } from "./art.js";
 
 export function createWorld() {
   runtime.scene = new THREE.Scene();
-  runtime.scene.background = new THREE.Color(0x9cb8b2);
-  runtime.scene.fog = new THREE.Fog(0x9cb8b2, 38, 94);
+  runtime.scene.background = new THREE.Color(0xa5cde0);
+  runtime.scene.fog = new THREE.Fog(0xa5cde0, 60, 130);
 
   runtime.camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 150);
   runtime.renderer = new THREE.WebGLRenderer({
@@ -21,7 +21,7 @@ export function createWorld() {
   runtime.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   runtime.renderer.outputColorSpace = THREE.SRGBColorSpace;
   runtime.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  runtime.renderer.toneMappingExposure = 0.95;
+  runtime.renderer.toneMappingExposure = 1.15;
 
   const skyLight = new THREE.HemisphereLight(0xb8d3e0, 0x434331, 1.5);
   runtime.scene.add(skyLight);
@@ -39,7 +39,7 @@ export function createWorld() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(WORLD * 2, WORLD * 2),
-    new THREE.MeshStandardMaterial({ color: 0x788064, map: surfaceTexture('ground'), roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0x8ec25e, map: surfaceTexture('ground'), roughness: 1 }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -95,10 +95,10 @@ export function applyStageTheme(stage) {
   const theme = runtime.scene.userData.terrainTheme;
   if (!theme) return;
   const desert = stage === 2;
-  theme.ground.material.color.setHex(desert ? 0xc5a15d : 0x788064);
+  theme.ground.material.color.setHex(desert ? 0xe2b771 : 0x8ec25e);
   theme.roadMat.color.setHex(desert ? 0x88714d : 0x404643);
   theme.grid.visible = false;
-  runtime.scene.background.setHex(desert ? 0xd5bd91 : 0x9cb8b2);
+  runtime.scene.background.setHex(desert ? 0xf0cf9b : 0xa5cde0);
   runtime.scene.fog.color.copy(runtime.scene.background);
   theme.skyLight.color.setHex(desert ? 0xffe4b6 : 0xcde6e4);
   theme.skyLight.groundColor.setHex(desert ? 0x977647 : 0x485642);
