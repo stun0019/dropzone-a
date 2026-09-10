@@ -79,6 +79,20 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
   c.stroke();
   c.fillStyle = accent;
   c.fillRect(x + 14, y, 32, 2);
+  c.save();
+  c.clip();
+  const sheen = c.createLinearGradient(x, y, x, y + Math.min(h, 48));
+  sheen.addColorStop(0, "rgba(190,220,230,.1)");
+  sheen.addColorStop(1, "rgba(190,220,230,0)");
+  c.fillStyle = sheen;
+  c.fillRect(x, y, w, Math.min(h, 48));
+  c.strokeStyle = "rgba(185,213,220,.12)";
+  c.beginPath(); c.moveTo(x + 14, y + 5); c.lineTo(x + w - 6, y + 5); c.stroke();
+  c.fillStyle = "#829395";
+  for (const px of [x + 7, x + w - 7]) {
+    c.fillRect(px, y + h - 8, 2, 2);
+  }
+  c.restore();
 }
 
 export function uiButton(label, x, y, w, h, fn, active = false) {

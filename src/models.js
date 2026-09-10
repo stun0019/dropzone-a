@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { TAU, MOB_TYPES, BOSS_TYPES } from "./config.js";
 import { createActorModel } from "./assets.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 export function mat(color, rough = 0.8, metal = 0.05, emissive = 0) {
   return new THREE.MeshStandardMaterial({
@@ -34,7 +35,8 @@ export function makeSoldier(color = 0x334c3b, enemy = false, modelKey = null) {
   if (asset) return asset;
   const root = new THREE.Group();
   const legs = new THREE.Group();
-  const body = box(0.9, 1.25, 0.55, color);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(0.9, 1.25, 0.55, 2, .1), mat(color));
+  body.castShadow = true;
   body.position.y = 1.55;
   root.add(body);
   const vest = box(1.02, 0.72, 0.64, enemy ? 0x4b2f29 : 0x1f2a22);
@@ -54,16 +56,40 @@ export function makeSoldier(color = 0x334c3b, enemy = false, modelKey = null) {
   helmet.position.y = 2.58;
   helmet.castShadow = true;
   root.add(helmet);
+  const visor = box(.57, .17, .13, enemy ? 0x8c4731 : 0x4cafbc);
+  visor.position.set(0, 2.52, -.32);
+  visor.material.metalness = .65;
+  visor.material.roughness = .22;
+  root.add(visor);
+  const pack = box(.66, .76, .3, enemy ? 0x594735 : 0x34474c);
+  pack.position.set(0, 1.7, .43);
+  root.add(pack);
+  for (const x of [-.32, .32]) {
+    const strap = box(.11, .78, .08, 0x89846a);
+    strap.position.set(x, 1.77, -.35); root.add(strap);
+    const pouch = box(.25, .28, .19, enemy ? 0x7e6042 : 0x657660);
+    pouch.position.set(x, 1.42, -.4); root.add(pouch);
+    const shoulder = new THREE.Mesh(new RoundedBoxGeometry(.31, .36, .5, 2, .07), mat(color));
+    shoulder.position.set(x * 1.65, 1.96, 0); shoulder.castShadow = true; root.add(shoulder);
+  }
   for (const x of [-0.25, 0.25]) {
     const leg = box(0.25, 0.75, 0.28, 0x202b25);
     leg.position.set(x, 0.6, 0);
     legs.add(leg);
+    const boot = box(.29, .23, .43, 0x172326);
+    boot.position.set(x, .19, -.07); legs.add(boot);
+    const knee = box(.28, .24, .1, 0x758077);
+    knee.position.set(x, .62, -.18); legs.add(knee);
   }
   root.add(legs);
   const gun = box(0.16, 0.16, 1.3, 0x1c2421);
   gun.position.set(0.48, 1.62, -0.55);
   gun.rotation.x = -0.08;
   root.add(gun);
+  const barrel = box(.08, .08, .55, 0x111c21);
+  barrel.position.set(0, 0, -.8); gun.add(barrel);
+  const sight = box(.12, .13, .2, 0x536569);
+  sight.position.set(0, .14, -.12); gun.add(sight);
   const arm = box(0.23, 0.7, 0.23, 0xb98264);
   arm.position.set(0.5, 1.55, -0.13);
   arm.rotation.x = -0.8;

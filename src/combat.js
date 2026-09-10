@@ -121,7 +121,13 @@ export function impactEffect(position, isPlayerHit = false) {
       }),
     );
     group.add(sphere);
-    for (let i = 0; i < 4; i++) {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(.19, .24, 20),
+      new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    group.add(ring);
+    for (let i = 0; i < 7; i++) {
       const spark = new THREE.Mesh(
         new THREE.BoxGeometry(0.035, 0.035, 0.65),
         new THREE.MeshBasicMaterial({
@@ -131,8 +137,9 @@ export function impactEffect(position, isPlayerHit = false) {
           depthTest: false,
         }),
       );
-      spark.rotation.y = (i * Math.PI) / 2;
-      spark.rotation.x = Math.PI / 2;
+      spark.rotation.y = (i * Math.PI * 2) / 7;
+      spark.rotation.x = .4 + (i % 3) * .6;
+      spark.position.set(Math.sin(i * 2.4) * .14, .08, Math.cos(i * 2.4) * .14);
       group.add(spark);
     }
   }

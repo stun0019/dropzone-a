@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { runtime } from "./runtime.js";
 import { WORLD, TAU } from "./config.js";
 import { box, cylinder, mat } from "./models.js";
+import { surfaceTexture, addRoadPaint } from "./art.js";
 
 export function createWorld() {
   runtime.scene = new THREE.Scene();
@@ -20,9 +21,9 @@ export function createWorld() {
   runtime.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   runtime.renderer.outputColorSpace = THREE.SRGBColorSpace;
   runtime.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  runtime.renderer.toneMappingExposure = 1.05;
+  runtime.renderer.toneMappingExposure = 0.95;
 
-  const skyLight = new THREE.HemisphereLight(0xcde6e4, 0x485642, 2.1);
+  const skyLight = new THREE.HemisphereLight(0xb8d3e0, 0x434331, 1.5);
   runtime.scene.add(skyLight);
   const sun = new THREE.DirectionalLight(0xffefd2, 3.2);
   sun.position.set(-20, 35, 18);
@@ -32,11 +33,13 @@ export function createWorld() {
   sun.shadow.camera.right = 38;
   sun.shadow.camera.top = 38;
   sun.shadow.camera.bottom = -38;
+  sun.shadow.normalBias = 0.04;
+  sun.shadow.bias = -0.00015;
   runtime.scene.add(sun);
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(WORLD * 2, WORLD * 2),
-    new THREE.MeshStandardMaterial({ color: 0x526b45, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0x788064, map: surfaceTexture('ground'), roughness: 1 }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -45,6 +48,7 @@ export function createWorld() {
 
   const roadMat = new THREE.MeshStandardMaterial({
     color: 0x404643,
+    map: surfaceTexture('road'),
     roughness: 1,
   });
   for (const r of [
@@ -64,6 +68,8 @@ export function createWorld() {
   grid.material.opacity = 0.18;
   grid.material.transparent = true;
   runtime.scene.add(grid);
+  grid.visible = false;
+  addRoadPaint(runtime.scene, WORLD);
   runtime.scene.userData.terrainTheme = {
     ground,
     roadMat,
@@ -89,9 +95,9 @@ export function applyStageTheme(stage) {
   const theme = runtime.scene.userData.terrainTheme;
   if (!theme) return;
   const desert = stage === 2;
-  theme.ground.material.color.setHex(desert ? 0xc5a15d : 0x526b45);
+  theme.ground.material.color.setHex(desert ? 0xc5a15d : 0x788064);
   theme.roadMat.color.setHex(desert ? 0x88714d : 0x404643);
-  theme.grid.visible = !desert;
+  theme.grid.visible = false;
   runtime.scene.background.setHex(desert ? 0xd5bd91 : 0x9cb8b2);
   runtime.scene.fog.color.copy(runtime.scene.background);
   theme.skyLight.color.setHex(desert ? 0xffe4b6 : 0xcde6e4);
@@ -128,6 +134,29 @@ export function addBuildings() {
     const roof = box(w + 1, 0.35, d + 1, 0x343b37);
     roof.position.y = h + 0.18;
     root.add(roof);
+    // Roof hardware and facade details stay inside the original cover footprint.
+    const vent = box(w * .25, .55, d * .25, 0x697574);
+    vent.position.set(-w * .2, h + .62, -d * .18);
+    root.add(vent);
+    for (let i = 0; i < 4; i++) {
+      const rib = box(w * .23, .035, .09, 0x273433);
+      rib.position.set(-w * .2, h + .91, -d * .18 + (i - 1.5) * .22);
+      root.add(rib);
+    }
+    const door = box(1.25, 2.3, .07, 0x263635);
+    door.position.set(-w * .22, 1.15, d / 2 + .035);
+    root.add(door);
+    const lintel = box(1.6, .12, .14, 0xd3ba77);
+    lintel.position.set(-w * .22, 2.4, d / 2 + .05);
+    root.add(lintel);
+    for (let wx = -w / 2 + 1.6; wx < w / 2 - .5; wx += 2) {
+      const frame = box(1.05, 1.15, .09, 0x293b3c);
+      frame.position.set(wx, h - 1.8, d / 2 + .04);
+      root.add(frame);
+      const glass = box(.82, .9, .1, 0x65898b);
+      glass.position.copy(frame.position); glass.position.z += .015;
+      root.add(glass);
+    }
     for (let yy = 1.5; yy < h - 1; yy += 1.8) {
       for (const side of [-1, 1]) {
         const win = box(0.7, 0.65, 0.06, 0x9dbdb8);
