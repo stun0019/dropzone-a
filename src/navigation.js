@@ -288,7 +288,7 @@ export function navigateTo(entity, goal, dt, speed) {
 export function smoothMotion(entity, desired, dt, profile = {}) {
   const current = entity.motionSpeed || 0;
   const rate = desired > current ? (profile.accel || 10) : (profile.decel || 8);
-  entity.motionSpeed = current + (desired - current) * Math.min(1, dt * rate);
+  entity.motionSpeed = current + (desired - current) * (1 - Math.exp(-dt * rate));
   if (Math.abs(entity.motionSpeed) < .015 && desired === 0) entity.motionSpeed = 0;
   return entity.motionSpeed;
 }
@@ -320,10 +320,13 @@ export function steer(entity, dir, dt, speed) {
 }
 
 export function animateMob(b, dt, moving) {
-  updateAnimation(b.mesh, dt);
+  // Debounce brief collision stops so clips do not restart on every frame.
+  b.motionHold = moving ? .14 : Math.max(0, (b.motionHold || 0) - dt);
+  moving = moving || b.motionHold > 0;
   const profile = b.motion || b.mesh.userData.motionProfile || {};
   const running = moving && (b.chaseState === 'chase' || (b.motionSpeed || 0) > (b.speed || 1) * 1.08);
   if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? (running && b.mesh.userData.actions.run ? 'run' : 'walk') : "idle");
+  updateAnimation(b.mesh, dt);
   b.walk += dt * (b.motionSpeed || b.speed) * (profile.legRate || 1);
   if (b.type === 'boss' && b.mesh.userData.bossAura) {
     const pulse = 1 + Math.sin((b.walk || 0) * .9) * .07;
@@ -335,7 +338,7 @@ export function animateMob(b, dt, moving) {
     if (moving) wheel.rotation.x += dt * b.speed * 2;
   const legs = b.mesh.userData.legs?.children || [];
   for (let i = 0; i < legs.length; i++)
-    legs[i].rotation.x = moving ? Math.sin(b.walk * 3 + i * Math.PI) * 0.4 : 0;
+    legs[i].rotation.x += ((moving ? Math.sin(b.walk * 3 + i * Math.PI) * 0.4 : 0) - legs[i].rotation.x) * (1 - Math.exp(-dt * 14));
   b.hitTime = Math.max(0, (b.hitTime || 0) - dt);
   if (!b.mesh.userData.assetClone && b.mesh.userData.body) b.mesh.userData.body.rotation.x =
     (b.type === "zombie" ? 0.12 : 0) + Math.sin(b.hitTime * 35) * b.hitTime;

@@ -9,7 +9,7 @@ import { batchEnvironment, dressDistricts } from './environment.js';
 export function createWorld() {
   runtime.scene = new THREE.Scene();
   runtime.scene.background = new THREE.Color(0xa5cde0);
-  runtime.scene.fog = new THREE.Fog(0xa5cde0, 60, 130);
+  runtime.scene.fog = new THREE.Fog(0xa5cde0, 78, 145);
 
   runtime.camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 150);
   runtime.renderer = new THREE.WebGLRenderer({
@@ -33,11 +33,11 @@ export function createWorld() {
   runtime.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   runtime.renderer.outputColorSpace = THREE.SRGBColorSpace;
   runtime.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  runtime.renderer.toneMappingExposure = 1.15;
+  runtime.renderer.toneMappingExposure = 1.0;
 
-  const skyLight = new THREE.HemisphereLight(0xb8d3e0, 0x434331, 1.5);
+  const skyLight = new THREE.HemisphereLight(0xc3dfed, 0x434331, 1.15);
   runtime.scene.add(skyLight);
-  const sun = new THREE.DirectionalLight(0xffefd2, 3.2);
+  const sun = new THREE.DirectionalLight(0xffefd2, 2.7);
   sun.position.set(-20, 35, 18);
   sun.castShadow = !runtime.reduced;
   sun.shadow.mapSize.set(1024, 1024);
@@ -69,6 +69,9 @@ export function createWorld() {
     map: surfaceTexture('road'),
     roughness: 1,
   });
+  const anisotropy = Math.min(8, runtime.renderer.capabilities.getMaxAnisotropy());
+  ground.material.map.anisotropy = anisotropy;
+  roadMat.map.anisotropy = anisotropy;
   for (const r of ROADS) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), roadMat);
     road.rotation.x = -Math.PI / 2;
@@ -118,6 +121,7 @@ export function applyStageTheme(stage) {
   const desert = stage === 2;
   theme.ground.material.color.setHex(0xffffff);
   theme.ground.material.map=terrainTexture(desert);
+  theme.ground.material.map.anisotropy = Math.min(8, runtime.renderer.capabilities.getMaxAnisotropy());
   theme.roadMat.color.setHex(desert ? 0x88714d : 0x404643);
   theme.grid.visible = false;
   runtime.scene.background.setHex(desert ? 0xf0cf9b : 0xa5cde0);

@@ -289,7 +289,6 @@ export function updatePlayer(dt) {
 export function updateFollowers(dt, snap = false) {
   const p = runtime.G.player;
   for (const f of runtime.G.followers || []) {
-    updateAnimation(f.mesh, dt);
     const offset = new THREE.Vector3(f.side * 2.1, 0, 0.9).applyAxisAngle(
       runtime.UP,
       p.yaw,

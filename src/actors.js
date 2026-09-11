@@ -298,9 +298,9 @@ export function updateBots(dt) {
     b.mesh.rotation.y += diff * Math.min(1, dt * 7);
     const cameraDistance = b.mesh.position.distanceToSquared(runtime.camera.position);
     b.animationElapsed = (b.animationElapsed || 0) + dt;
-    const animationInterval = cameraDistance > 6400 ? .25 : cameraDistance > 1600 ? .1 : runtime.coarse ? 1/30 : 0;
+    const animationInterval = cameraDistance > 6400 ? .15 : cameraDistance > 1600 ? 1/30 : 0;
     if (b.animationElapsed >= animationInterval) {
-      animateMob(b, b.animationElapsed, moving || !!spec?.vehicle);
+      animateMob(b, b.animationElapsed, b.mesh.position.distanceToSquared(beforeMove) > .000001);
       b.animationElapsed = 0;
     }
     if (b.mesh.userData.turret)

@@ -46,6 +46,7 @@ function noiseBurst(time, duration = .18, volume = .12, cutoff = 1500) {
   gain.gain.exponentialRampToValueAtTime(.0001, time + duration);
   source.connect(filter); filter.connect(gain); gain.connect(a.master);
   source.start(time); source.stop(time + duration + .02);
+  source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
 }
 
 export function tone(
@@ -107,6 +108,7 @@ export function sound(name) {
   } else if (name === "knock") {
     tone(150, t, 0.12, 0.1, "triangle", 50);
   } else {
+    noiseBurst(t, name === 'shotgun' ? .13 : .055, name === 'shotgun' ? .13 : .065, 2800);
     tone(
       name === "rocket" ? 110 : name === "shotgun" ? 160 : 260,
       t,

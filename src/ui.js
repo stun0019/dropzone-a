@@ -10,8 +10,8 @@ import { worldToScreen } from "./combat.js";
 export function initNativeUI() {
   const ui = runtime.nativeUI;
   ui.surface = document.createElement("canvas");
-  ui.surface.width = runtime.coarse ? 1280 : 1920;
-  ui.surface.height = runtime.coarse ? 720 : 1080;
+  ui.surface.width = 1920;
+  ui.surface.height = 1080;
   ui.ctx = ui.surface.getContext("2d");
   ui.texture = new THREE.CanvasTexture(ui.surface);
   ui.texture.colorSpace = THREE.SRGBColorSpace;
@@ -56,7 +56,7 @@ export function uiText(
   c.fillStyle = color;
   c.textAlign = align;
   c.textBaseline = "middle";
-  c.shadowColor = '#00000066'; c.shadowBlur = 2; c.shadowOffsetY = 1;
+  c.shadowColor = '#00000099'; c.shadowBlur = 0; c.shadowOffsetY = 1;
   c.fillText(String(text), x, y);
   c.shadowBlur = 0; c.shadowOffsetY = 0;
 }
@@ -76,7 +76,7 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
   const gradient = c.createLinearGradient(x, y, x, y + h);
   gradient.addColorStop(0, '#202a30f5');
   gradient.addColorStop(1, '#10191ef5');
-  c.fillStyle = gradient;
+  c.fillStyle = fill;
   c.fill();
   c.shadowBlur = 0; c.shadowOffsetY = 0;
   c.strokeStyle = '#080f14';
@@ -681,13 +681,14 @@ export function drawNativeUI(now) {
       c.fillStyle = "#adc6c799";
       c.fill();
     }
-    if (runtime.G.uiHit && now - runtime.G.uiHit.time < 250) {
+    if (runtime.G.uiHit && now - runtime.G.uiHit.time < (runtime.G.uiHit.kill ? 650 : 200)) {
       const p = worldToScreen(runtime.G.uiHit.position),
         x = (p.x * 1280) / rect.width,
         y = (p.y * 720) / rect.height;
       c.strokeStyle = runtime.G.uiHit.kill ? "#ffce69" : "#e8f1ef";
-      c.lineWidth = 2;
-      c.globalAlpha = 1 - (now - runtime.G.uiHit.time) / 250;
+      c.lineWidth = runtime.G.uiHit.kill ? 3 : 2;
+      c.globalAlpha = 1 - (now - runtime.G.uiHit.time) / (runtime.G.uiHit.kill ? 650 : 200);
+      if (runtime.G.uiHit.kill) uiText('捕獲', x, y - 26, 20, '#ffe0a0', 'center', true);
       for (const [dx, dy] of [
         [-1, -1],
         [1, -1],

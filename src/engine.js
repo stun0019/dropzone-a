@@ -80,7 +80,7 @@ export function step(dt) {
     }
     const opacity = runtime.clamp(t.life / t.max, 0, 1);
     for (const child of t.mesh.children)
-      child.material.opacity = opacity * (t.kind === "enemy" ? 0.45 : 1);
+      child.material.opacity = opacity * (t.kind === "enemy" ? 0.22 : 1);
     if (t.life <= 0) releaseEffect(t, runtime.beamPool[t.kind]);
   }
   runtime.G.tracers = runtime.G.tracers.filter((t) => t.life > 0);
