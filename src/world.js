@@ -14,10 +14,19 @@ export function createWorld() {
   runtime.camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 150);
   runtime.renderer = new THREE.WebGLRenderer({
     canvas: runtime.canvas,
-    antialias: !runtime.coarse,
+    // Keep MSAA on phones too.  The previous coarse path disabled it and then
+    // rendered at 1x DPR, which made the whole scene look soft on Retina
+    // screens (especially when the game canvas was scaled to landscape).
+    antialias: true,
     powerPreference: "high-performance",
   });
-  runtime.renderRatio = Math.min(devicePixelRatio, runtime.coarse ? 1 : 1.5);
+  const dpr = window.devicePixelRatio || 1;
+  // A capped high-DPI target keeps text/edges crisp without allowing a 3x/4x
+  // phone DPR to explode the fill-rate.  The adaptive loop may lower this
+  // slightly on slower devices, but never back down to the old blurry 0.65x.
+  runtime.renderMaxRatio = runtime.coarse ? Math.min(dpr, 1.75) : Math.min(dpr, 2);
+  runtime.renderMinRatio = runtime.coarse ? Math.min(runtime.renderMaxRatio, 1.15) : 1;
+  runtime.renderRatio = runtime.renderMaxRatio;
   runtime.renderer.setPixelRatio(runtime.renderRatio);
   runtime.renderer.setSize(1280, 720, false);
   runtime.renderer.shadowMap.enabled = !runtime.reduced && !runtime.coarse;

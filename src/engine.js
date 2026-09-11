@@ -151,7 +151,13 @@ export function loop(now) {
   if (runtime.coarse) {
     runtime.frameAverage = (runtime.frameAverage || 16.7)*.97 + Math.min(100,now-runtime.last)*.03;
     if (now-(runtime.qualityStamp||0)>4000) {
-      const ratio = runtime.frameAverage > 26 ? Math.max(.65,runtime.renderRatio-.1) : runtime.frameAverage < 18 ? Math.min(1,runtime.renderRatio+.05) : runtime.renderRatio;
+      const minRatio = runtime.renderMinRatio ?? 1.15;
+      const maxRatio = runtime.renderMaxRatio ?? 1.75;
+      const ratio = runtime.frameAverage > 30
+        ? Math.max(minRatio, runtime.renderRatio - .1)
+        : runtime.frameAverage < 20
+          ? Math.min(maxRatio, runtime.renderRatio + .05)
+          : runtime.renderRatio;
       if (ratio!==runtime.renderRatio) { runtime.renderRatio=ratio; runtime.renderer.setPixelRatio(ratio); }
       runtime.qualityStamp=now;
     }

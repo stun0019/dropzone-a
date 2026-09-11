@@ -99,6 +99,14 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
     c.fillRect(px, y + h - 8, 2, 2);
   }
   c.restore();
+  c.save();
+  c.strokeStyle = accent + "aa";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(x + 3, y + 16); c.lineTo(x + 3, y + h - 16); c.lineTo(x + 16, y + h - 3);
+  c.moveTo(x + w - 3, y + 16); c.lineTo(x + w - 3, y + h - 16); c.lineTo(x + w - 16, y + h - 3);
+  c.stroke();
+  c.restore();
   c.restore();
 }
 
@@ -459,6 +467,15 @@ export function drawNativeUI(now) {
       true,
     );
   } else if (runtime.G) {
+    const vignette = c.createRadialGradient
+      ? c.createRadialGradient(640, 310, 190, 640, 360, 760)
+      : c.createLinearGradient(0, 0, 1280, 720);
+    if (vignette?.addColorStop) {
+      vignette.addColorStop(0, "rgba(0,0,0,0)");
+      vignette.addColorStop(1, "rgba(3,8,12,.28)");
+      c.fillStyle = vignette;
+    } else c.fillStyle = "rgba(3,8,12,.12)";
+    c.fillRect(0, 0, 1280, 720);
     uiText("DROPZONE", 28, 31, 23, "#e5ebe7", "left", true);
     uiText("TACTICAL CAPTURE", 30, 53, 10, "#96b8bd");
     uiRadar();
