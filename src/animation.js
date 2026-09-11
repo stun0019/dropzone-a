@@ -38,6 +38,10 @@ export function playAnimation(actor, name, fade = 0.16) {
   const action = actor?.userData?.actions?.[name];
   if (!action || actor.userData.currentAction === action) return;
   const previous = actor.userData.currentAction;
+  const rates = actor.userData.animationRates || {};
+  action.timeScale = name === 'walk' ? (rates.walkRate || 1)
+    : name === 'run' ? (rates.runRate || 1)
+      : name === 'idle' ? (rates.idleRate || 1) : 1;
   action.reset().setLoop(name === "death" ? THREE.LoopOnce : THREE.LoopRepeat, name === "death" ? 1 : Infinity).fadeIn(fade).play();
   if (previous) previous.fadeOut(fade);
   actor.userData.currentAction = action;

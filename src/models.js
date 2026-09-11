@@ -243,6 +243,24 @@ export function makeBoss(variant = 0) {
   root.scale.setScalar(spec.scale);
   root.userData.baseScale = spec.scale;
   root.userData.bossVariant = variant;
+  root.userData.boss = true;
+  const auraColors = [0xf0b85b, 0x9bd15b, 0x7db4e8];
+  const aura = new THREE.Mesh(
+    new THREE.RingGeometry(1.35, 1.58, 48),
+    new THREE.MeshBasicMaterial({ color: auraColors[variant], transparent: true, opacity: .58, depthWrite: false }),
+  );
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = .06;
+  root.add(aura);
+  const core = new THREE.Mesh(
+    new THREE.TorusGeometry(.62, .07, 8, 28),
+    new THREE.MeshBasicMaterial({ color: auraColors[variant], transparent: true, opacity: .82, depthWrite: false }),
+  );
+  core.rotation.x = -Math.PI / 2;
+  core.position.y = .09;
+  root.add(core);
+  root.userData.bossAura = aura;
+  root.userData.bossCore = core;
   if (root.userData.assetClone) return root;
   const bodyMaterial = root.userData.body?.material;
   const bodyColor = Array.isArray(bodyMaterial) ? bodyMaterial[0]?.color : bodyMaterial?.color;

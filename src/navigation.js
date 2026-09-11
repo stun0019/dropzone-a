@@ -285,6 +285,14 @@ export function navigateTo(entity, goal, dt, speed) {
   return true;
 }
 
+export function smoothMotion(entity, desired, dt, profile = {}) {
+  const current = entity.motionSpeed || 0;
+  const rate = desired > current ? (profile.accel || 10) : (profile.decel || 8);
+  entity.motionSpeed = current + (desired - current) * Math.min(1, dt * rate);
+  if (Math.abs(entity.motionSpeed) < .015 && desired === 0) entity.motionSpeed = 0;
+  return entity.motionSpeed;
+}
+
 export function steer(entity, dir, dt, speed) {
   const pos = entity.mesh.position,
     step = speed * dt;
@@ -313,8 +321,16 @@ export function steer(entity, dir, dt, speed) {
 
 export function animateMob(b, dt, moving) {
   updateAnimation(b.mesh, dt);
-  if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? (b.swarming && b.mesh.userData.actions.run ? 'run' : 'walk') : "idle");
-  b.walk += dt * b.speed;
+  const profile = b.motion || b.mesh.userData.motionProfile || {};
+  const running = moving && (b.chaseState === 'chase' || (b.motionSpeed || 0) > (b.speed || 1) * 1.08);
+  if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? (running && b.mesh.userData.actions.run ? 'run' : 'walk') : "idle");
+  b.walk += dt * (b.motionSpeed || b.speed) * (profile.legRate || 1);
+  if (b.type === 'boss' && b.mesh.userData.bossAura) {
+    const pulse = 1 + Math.sin((b.walk || 0) * .9) * .07;
+    b.mesh.userData.bossAura.scale.setScalar(pulse);
+    b.mesh.userData.bossCore.scale.setScalar(1 + Math.sin((b.walk || 0) * 1.4) * .12);
+    b.mesh.userData.bossAura.material.opacity = .48 + (pulse - .93) * 1.8;
+  }
   for (const wheel of b.mesh.userData.wheels || [])
     if (moving) wheel.rotation.x += dt * b.speed * 2;
   const legs = b.mesh.userData.legs?.children || [];

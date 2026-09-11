@@ -42,7 +42,8 @@ export const BOSS_TYPES = [
   {
     name: "裝甲暴君",
     color: 0x792c32,
-    scale: 2,
+    scale: 2.65,
+    radius: 2.25,
     min: 60,
     max: 120,
     speed: 1.7,
@@ -50,7 +51,8 @@ export const BOSS_TYPES = [
   {
     name: "劇毒巨獸",
     color: 0x547b28,
-    scale: 2.15,
+    scale: 2.85,
+    radius: 2.45,
     min: 120,
     max: 220,
     speed: 1.9,
@@ -58,7 +60,8 @@ export const BOSS_TYPES = [
   {
     name: "重裝督軍",
     color: 0x364f72,
-    scale: 2.3,
+    scale: 2.7,
+    radius: 2.35,
     min: 220,
     max: 400,
     speed: 1.45,
@@ -154,6 +157,14 @@ export const MOB_TYPES = {
 
 export const MOB_KEYS = Object.keys(MOB_TYPES);
 
+export const MOTION_PROFILES = {
+  player: { speed: 6.4, accel: 18, decel: 12, walkRate: 1.04, runRate: 1.12, legRate: 1.08 },
+  follower: { speed: 7.4, accel: 15, decel: 10, walkRate: 1.0, runRate: 1.08, legRate: 1.04 },
+  zombie: { speed: 2.6, accel: 8, decel: 6, walkRate: .86, runRate: .98, legRate: .92 },
+  soldier: { speed: 3.1, accel: 10, decel: 8, walkRate: .94, runRate: 1.06, legRate: 1.0 },
+  default: { speed: 2.5, accel: 9, decel: 7, walkRate: .92, runRate: 1.0, legRate: .95 },
+};
+
 // Runtime model overrides. Files are optional: when a GLB is absent or fails
 // to load, models.js keeps using its procedural fallback.
 export const MODEL_CONFIG = {
@@ -168,9 +179,9 @@ export const MODEL_CONFIG = {
   tank: { path: "./assets/models/vehicles/truck.gltf", scale: .78, rotation:[0,Math.PI,0], vehicle:true },
   scavenger: { path: "./assets/models/enemies/scout.gltf", scale: 1.7, rotation:[0,Math.PI,0], unarmed:true },
   villager: { path: "./assets/models/enemies/civilian.gltf", scale: 1.55, rotation:[0,Math.PI,0], unarmed:true },
-  boss0: { path: "./assets/models/bosses/mutant.gltf", scale: 1.5, rotation:[0,Math.PI,0], tint:0xc4a29e },
-  boss1: { path: "./assets/models/enemies/heavy.gltf", scale: 1.4, rotation:[0,Math.PI,0], tint:0xa0c259 },
-  boss2: { path: "./assets/models/enemies/trooper.gltf", scale: 1.45, rotation:[0,Math.PI,0], explorer:true, uniform:true, equipment:'shield', clips:{idle:'Idle_Gun',walk:'Walk_Gun'} },
+  boss0: { path: "./assets/models/bosses/mutant.gltf", scale: 1, rotation:[0,Math.PI,0], tint:0xc4a29e },
+  boss1: { path: "./assets/models/enemies/heavy.gltf", scale: 1, rotation:[0,Math.PI,0], tint:0xa0c259 },
+  boss2: { path: "./assets/models/enemies/trooper.gltf", scale: 1, rotation:[0,Math.PI,0], explorer:true, uniform:true, equipment:'shield', clips:{idle:'Idle_Gun',walk:'Walk_Gun'} },
   rifle: { path: "./assets/models/weapons/rifle.gltf", scale: 1 },
   laser: { path: "./assets/models/weapons/laser.glb", scale: 1 },
   shotgun: { path: "./assets/models/weapons/shotgun.glb", scale: 1 },

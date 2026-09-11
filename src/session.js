@@ -13,7 +13,7 @@ import { makeSoldier } from "./models.js";
 import { updateFollowers } from "./player.js";
 import { spawnBot } from "./actors.js";
 import { message, updateHud, feed } from "./hud.js";
-import { MOB_TYPES } from "./config.js";
+import { MOB_TYPES, MOTION_PROFILES } from "./config.js";
 import { rollMobLoot } from "./economy.js";
 import { settleCaptures } from "./combat.js";
 
@@ -92,9 +92,13 @@ export function startGame() {
   mesh.add(teamRing);
   mesh.position.set(0, 0, 28);
   runtime.scene.add(mesh);
-  runtime.G.player = { mesh, vel: new THREE.Vector3(), yaw: Math.PI };
+  mesh.userData.motionProfile = MOTION_PROFILES.player;
+  mesh.userData.animationRates = MOTION_PROFILES.player;
+  runtime.G.player = { mesh, vel: new THREE.Vector3(), yaw: Math.PI, motion: MOTION_PROFILES.player, motionSpeed: 0, walk: 0, lastMoveDir: new THREE.Vector3(0, 0, -1) };
   runtime.G.followers = [-1, 1].map((side) => {
     const mesh = makeSoldier(0x3c6970, false, "player");
+    mesh.userData.motionProfile = MOTION_PROFILES.follower;
+    mesh.userData.animationRates = MOTION_PROFILES.follower;
     const ring = new THREE.Mesh(new THREE.RingGeometry(.65, .78, 32), new THREE.MeshBasicMaterial({color:0x63bfff, transparent:true, opacity:.55, depthWrite:false}));
     ring.rotation.x = -Math.PI / 2; ring.position.y = .055; mesh.add(ring);
     runtime.scene.add(mesh);
@@ -106,6 +110,8 @@ export function startGame() {
       walk: 0,
       hitTime: 0,
       turnSide: side,
+      motion: MOTION_PROFILES.follower,
+      motionSpeed: 0,
     };
   });
   updateFollowers(0, true);

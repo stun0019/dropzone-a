@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { runtime } from "./runtime.js";
-import { WORLD, TAU, MOB_KEYS, MOB_TYPES, BOSS_TYPES } from "./config.js";
+import { WORLD, TAU, MOB_KEYS, MOB_TYPES, BOSS_TYPES, MOTION_PROFILES } from "./config.js";
 import { makeBoss, makeMob } from "./models.js";
 import { message, feed } from "./hud.js";
 import { sound } from "./audio.js";
 import { patrolDestination } from "./player.js";
-import { steer, animateMob, visibleTarget } from "./navigation.js";
+import { steer, animateMob, visibleTarget, smoothMotion } from "./navigation.js";
 import { makeBeam, impactEffect } from "./combat.js";
 import { playAnimation } from "./assets.js";
 import { roadSpawn, driveRoad } from './roads.js';
@@ -36,7 +36,7 @@ export function spawnBot(i, boss = false, eventPos = null) {
   const mesh =
     (poolIndex >= 0 ? pool.splice(poolIndex, 1)[0] : null) ||
     (boss ? makeBoss(variant) : makeMob(type));
-  const radius = boss ? 1.7 : spec.radius + 0.2;
+  const radius = boss ? BOSS_TYPES[variant].radius : spec.radius + 0.2;
   let pos = null,
     bestSpace = -1;
   for (let attempt = 0; attempt < 40; attempt++) {
@@ -85,7 +85,7 @@ export function spawnBot(i, boss = false, eventPos = null) {
     sector: eventPos,
     faction: boss ? (variant === 2 ? "soldier" : "zombie") : spec.faction,
     dead: false,
-    radius: boss ? 1.5 : spec.radius,
+    radius: boss ? BOSS_TYPES[variant].radius : spec.radius,
     fireCd: runtime.rand(0.5, 2),
     think: runtime.rand(0.1, 0.4),
     dir: new THREE.Vector3(0, 0, -1),
@@ -102,6 +102,10 @@ export function spawnBot(i, boss = false, eventPos = null) {
     rest: runtime.rand(3, 6),
     turnSide: i % 2 ? 1 : -1,
     hitTime: 0,
+    motion: MOTION_PROFILES[type] || MOTION_PROFILES[MOB_TYPES[type]?.faction] || MOTION_PROFILES.default,
+    roadFrom: spec?.vehicle ? (pos.roadFrom ?? null) : null,
+    roadTo: spec?.vehicle ? (pos.roadTo ?? null) : null,
+    lane: spec?.vehicle ? (pos.lane || 1) : null,
     previousPosition: pos.clone(),
     chaseState: 'patrol',
     orbitSlot: -1,
@@ -253,7 +257,9 @@ export function updateBots(dt) {
     const moving =
       swarm || !b.target ||
       distance > (ranged ? 7 : toxic ? 5 : b.type === "boss" ? 3 : 1.6);
-    const travel = moving ? b.dir.clone() : new THREE.Vector3();
+    const desiredSpeed = moving ? b.speed * (frenzy ? 1.25 : 1) : 0;
+    const currentSpeed = smoothMotion(b, desiredSpeed, dt, b.motion);
+    const travel = currentSpeed > .01 ? b.dir.clone() : new THREE.Vector3();
     for (const other of neighbors.near(b.mesh.position, 8)) {
       if (other === b || other.dead) continue;
       const away = b.mesh.position.clone().sub(other.mesh.position).setY(0),
@@ -274,9 +280,9 @@ export function updateBots(dt) {
     }
     const beforeMove = b.mesh.position.clone();
     if (spec?.vehicle) {
-      driveRoad(b, dt, b.speed);
+      driveRoad(b, dt, currentSpeed);
       travel.copy(b.dir);
-    } else if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.25 : 1));
+    } else if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, currentSpeed);
     const actualMove = b.mesh.position.clone().sub(beforeMove).setY(0);
     const facing = actualMove.lengthSq() > 0.0001 ? actualMove.normalize() : b.dir;
     const aim = b.target

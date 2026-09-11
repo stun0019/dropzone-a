@@ -6,8 +6,9 @@ import {
   navigateTo,
   animateMob,
   walkClear,
+  smoothMotion,
 } from "./navigation.js";
-import { MOB_TYPES, BOSS_TYPES, TAU } from "./config.js";
+import { MOB_TYPES, BOSS_TYPES, TAU, MOTION_PROFILES } from "./config.js";
 import { centerOf, aimFromScreen, shoot } from "./combat.js";
 import { moveEntity, collides } from "./actors.js";
 import { playAnimation, updateAnimation } from "./assets.js";
@@ -221,24 +222,32 @@ export function updatePlayer(dt) {
     else move.set(0, 0, 0);
     runtime.G.manualApproach = true;
   }
-  if (move.lengthSq() > 0.01) {
-    move.normalize();
-    if (runtime.G.auto && !manualMove) {
-      if (!navigateTo(p, supplyGoal || target.mesh.position, dt, 6.4)) {
+  const desiredSpeed = move.lengthSq() > 0.01 ? (p.motion?.speed || MOTION_PROFILES.player.speed) : 0;
+  const currentSpeed = smoothMotion(p, desiredSpeed, dt, p.motion || MOTION_PROFILES.player);
+  if (move.lengthSq() > 0.01) p.lastMoveDir = move.clone().normalize();
+  const travelDirection = move.lengthSq() > 0.01
+    ? move.clone().normalize()
+    : (p.lastMoveDir?.clone() || new THREE.Vector3());
+  const beforeMove = p.mesh.position.clone();
+  if (travelDirection.lengthSq() > 0.01 && currentSpeed > .01) {
+    if (runtime.G.auto && !manualMove && (supplyGoal || target)) {
+      if (!navigateTo(p, supplyGoal || target.mesh.position, dt, currentSpeed)) {
         if (target) target.avoidUntil = runtime.G.time + 4;
         runtime.G.autoTarget = null;
         runtime.G.searchCd = 0;
       }
     } else {
       p.nav = null;
-      moveEntity(p, move.multiplyScalar(dt * 6.4));
+      moveEntity(p, travelDirection.multiplyScalar(dt * currentSpeed));
     }
   }
-  if (p.mesh.userData.actions) playAnimation(p.mesh, move.lengthSq() > 0.01 ? "walk" : "idle");
+  const actualMove = p.mesh.position.distanceToSquared(beforeMove) > .000001;
+  if (p.mesh.userData.actions) playAnimation(p.mesh, currentSpeed > .12 && actualMove ? "walk" : "idle");
+  p.walk = (p.walk || 0) + dt * currentSpeed * (p.motion?.legRate || 1);
   for (let i = 0; i < (p.mesh.userData.legs?.children || []).length; i++)
     p.mesh.userData.legs.children[i].rotation.x =
-      move.lengthSq() > 0.01
-        ? Math.sin(runtime.G.time * 11 + i * Math.PI) * 0.35
+      actualMove || currentSpeed > .12
+        ? Math.sin(p.walk * 5.5 + i * Math.PI) * 0.35
         : 0;
   if (runtime.pointer && !runtime.G.auto)
     aimFromScreen(runtime.pointer.x, runtime.pointer.y);
@@ -296,13 +305,16 @@ export function updateFollowers(dt, snap = false) {
     }
     const before = f.mesh.position.clone(),
       distance = desired.distanceTo(before);
-    if (distance > 0.12) navigateTo(f, desired, dt, Math.min(9, distance * 5));
+    const desiredSpeed = distance > 0.12 ? Math.min(f.motion?.speed || 7.4, distance * 5) : 0;
+    const currentSpeed = smoothMotion(f, desiredSpeed, dt, f.motion || MOTION_PROFILES.follower);
+    if (currentSpeed > .01) navigateTo(f, desired, dt, currentSpeed);
     const angle = Math.atan2(
       Math.sin(p.yaw - f.mesh.rotation.y),
       Math.cos(p.yaw - f.mesh.rotation.y),
     );
     f.mesh.rotation.y += angle * (1 - Math.exp(-dt * 12));
-    animateMob(f, dt, f.mesh.position.distanceToSquared(before) > 0.00001);
+    const actualMove = f.mesh.position.distanceToSquared(before) > 0.00001;
+    animateMob(f, dt, currentSpeed > .12 && actualMove);
   }
 }
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { MODEL_CONFIG } from "./config.js";
+import { MODEL_CONFIG, MOTION_PROFILES, MOB_TYPES } from "./config.js";
 import { runtime } from "./runtime.js";
 import { setupActorAnimation, playAnimation, updateAnimation } from "./animation.js";
 import { setupExplorer } from './explorer.js';
@@ -14,6 +14,9 @@ const downloads = new Map();
 
 function configureRoot(root, key, animations = []) {
   const spec = MODEL_CONFIG[key] || {};
+  const faction = MOB_TYPES[key]?.faction;
+  root.userData.motionProfile = MOTION_PROFILES[key] || MOTION_PROFILES[faction] || MOTION_PROFILES.default;
+  root.userData.animationRates = root.userData.motionProfile;
   root.scale.multiplyScalar(spec.scale || 1);
   if (spec.rotation) root.rotation.set(...spec.rotation);
   let firstMesh = null;
