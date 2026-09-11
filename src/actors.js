@@ -102,6 +102,9 @@ export function spawnBot(i, boss = false, eventPos = null) {
     rest: runtime.rand(3, 6),
     turnSide: i % 2 ? 1 : -1,
     hitTime: 0,
+    previousPosition: pos.clone(),
+    chaseState: 'patrol',
+    orbitSlot: -1,
   });
   runtime.G.alive++;
   playAnimation(mesh, "idle");
@@ -150,11 +153,14 @@ export function updateBots(dt) {
   const slots = new Map(attracted.map((b, i) => [b, i]));
   for (const b of runtime.G.bots) {
     if (b.dead || b.airborne) continue;
+    b.previousPosition ||= b.mesh.position.clone();
+    b.previousPosition.copy(b.mesh.position);
     const spec = MOB_TYPES[b.type],
       peaceful = !!spec?.peaceful;
     const frenzy = !!inside(b.mesh.position);
     const swarm = slots.has(b);
     b.swarming = !!swarm;
+    b.orbitSlot = swarm ? slots.get(b) : -1;
     const ranged = spec?.range > 10 || (b.type === "boss" && b.variant === 2);
     const toxic =
       b.type === "spitter" || (b.type === "boss" && b.variant === 1);
@@ -194,12 +200,24 @@ export function updateBots(dt) {
       b.dir.normalize();
       if (swarm) {
         const slot = slots.get(b);
-        const angle = (slot % 9) * TAU / 9 + runtime.G.time * .08 + (slot >= 9 ? .35 : 0);
-        const radius = slot < 9 ? 10 : 17;
-        const orbit = runtime.G.player.mesh.position.clone();
-        orbit.x = runtime.clamp(orbit.x + Math.cos(angle) * radius, zone.minX + 2, zone.maxX - 2);
-        orbit.z = runtime.clamp(orbit.z + Math.sin(angle) * radius, zone.minZ + 2, zone.maxZ - 2);
-        b.dir.copy(orbit).sub(b.mesh.position).setY(0).normalize();
+        const playerPos = runtime.G.player.mesh.position;
+        const toPlayer = playerPos.clone().sub(b.mesh.position).setY(0);
+        const playerDistance = toPlayer.length();
+        const angle = (slot % 12) * TAU / 12 + b.orbitPhase + runtime.G.time * .12;
+        const ring = slot < 8 ? 8.5 + (slot % 3) * .7 : 14 + (slot % 4) * 1.2;
+        if (playerDistance > 19) {
+          b.chaseState = 'chase';
+          b.dir.copy(toPlayer).normalize();
+        } else {
+          b.chaseState = playerDistance > 8 ? 'approach' : 'orbit';
+          const radial = playerPos.clone().add(new THREE.Vector3(Math.cos(angle) * ring, 0, Math.sin(angle) * ring));
+          const towardSlot = radial.sub(b.mesh.position).setY(0);
+          const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+          // Radial correction reaches the ring; tangential drift keeps the horde moving.
+          b.dir.copy(towardSlot).normalize().multiplyScalar(playerDistance > 8 ? 1 : .52).addScaledVector(tangent, playerDistance > 8 ? .18 : .82).normalize();
+        }
+      } else {
+        b.chaseState = 'patrol';
       }
       if (peaceful) {
         const threat = runtime.G.bots.find(
@@ -241,31 +259,32 @@ export function updateBots(dt) {
       const away = b.mesh.position.clone().sub(other.mesh.position).setY(0),
         distance = away.length();
       const separation = Math.max(
-        frenzy ? 3 : 3.5,
-        (b.radius || 0.55) + (other.radius || 0.55) + 1,
+        frenzy ? 1.65 : 2.15,
+        (b.radius || 0.55) + (other.radius || 0.55) + 0.18,
       );
       if (distance < separation && distance > 0.01)
         travel.addScaledVector(
           away.normalize(),
-          (1 - distance / separation) * 2.5,
+          (1 - distance / separation) * (frenzy ? 0.7 : 1.1),
         );
     }
     if (swarm) {
       const away = b.mesh.position.clone().sub(runtime.G.player.mesh.position).setY(0);
       if (away.lengthSq() < 64 && away.lengthSq() > .01) travel.addScaledVector(away.normalize(), 3);
     }
+    const beforeMove = b.mesh.position.clone();
     if (spec?.vehicle) {
       driveRoad(b, dt, b.speed);
       travel.copy(b.dir);
     } else if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.25 : 1));
+    const actualMove = b.mesh.position.clone().sub(beforeMove).setY(0);
+    const facing = actualMove.lengthSq() > 0.0001 ? actualMove.normalize() : b.dir;
     const aim = b.target
       ? b.target.mesh.position.clone().sub(b.mesh.position).normalize()
       : b.dir;
     const aimYaw = Math.atan2(-aim.x, -aim.z);
     const yaw =
-        spec?.vehicle && travel.lengthSq() > 0.01
-          ? Math.atan2(-travel.x, -travel.z)
-          : aimYaw,
+        facing.lengthSq() > 0.01 ? Math.atan2(-facing.x, -facing.z) : aimYaw,
       diff = Math.atan2(
         Math.sin(yaw - b.mesh.rotation.y),
         Math.cos(yaw - b.mesh.rotation.y),
@@ -306,6 +325,42 @@ export function updateBots(dt) {
             ? runtime.rand(0.7, 1.2)
             : runtime.rand(1, 1.6);
       if (frenzy) b.fireCd *= .4;
+    }
+  }
+  resolveMobCollisions();
+}
+
+function resolveMobCollisions() {
+  const bots = runtime.G.bots.filter(b => !b.dead && !b.airborne);
+  const checked = new Set();
+  for (const a of bots) {
+    for (const b of neighbors.near(a.mesh.position, 5)) {
+      if (a === b || b.dead || b.airborne) continue;
+      const key = a.mesh.uuid < b.mesh.uuid ? `${a.mesh.uuid}:${b.mesh.uuid}` : `${b.mesh.uuid}:${a.mesh.uuid}`;
+      if (checked.has(key)) continue;
+      checked.add(key);
+      const delta = b.mesh.position.clone().sub(a.mesh.position).setY(0);
+      const distance = delta.length();
+      const required = (a.radius || .55) + (b.radius || .55);
+      if (distance >= required || distance < .0001) continue;
+      const vehicleA = !!MOB_TYPES[a.type]?.vehicle;
+      const vehicleB = !!MOB_TYPES[b.type]?.vehicle;
+      if (vehicleA || vehicleB) {
+        const vehicle = vehicleA ? a : b;
+        const other = vehicleA ? b : a;
+        const vehicleWasClear = vehicle.previousPosition?.distanceTo(other.previousPosition || other.mesh.position) >= required;
+        if (vehicleWasClear) {
+          vehicle.mesh.position.copy(vehicle.previousPosition);
+          if (vehicleA && vehicleB) other.mesh.position.copy(other.previousPosition);
+        }
+        const push = delta.normalize().multiplyScalar(Math.max(0, required - distance) + .02);
+        if (!vehicleWasClear || !vehicle.mesh.position.equals(vehicle.previousPosition))
+          other.mesh.position.add(vehicleA ? push : push.negate());
+      } else {
+        const push = delta.normalize().multiplyScalar(Math.min(.28, (required - distance) * .5 + .015));
+        a.mesh.position.addScaledVector(push, -1);
+        b.mesh.position.add(push);
+      }
     }
   }
 }
