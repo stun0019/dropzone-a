@@ -180,7 +180,7 @@ export function updateCaptures(dt) {
     if (!b.dead) continue;
     b.captureAge += dt;
     const t = b.captureAge;
-    b.mesh.rotation.z = -runtime.clamp((t - 0.08) / 0.4, 0, 1) * 1.4;
+    if (!b.airborne) b.mesh.rotation.z = -runtime.clamp((t - 0.08) / 0.4, 0, 1) * 1.4;
     b.mesh.scale.setScalar(
       (b.mesh.userData.baseScale || 1) *
         (1 - runtime.clamp((t - 0.7) / 0.3, 0, 1) * 0.95),
@@ -237,6 +237,8 @@ export function shoot(shooter, dir, isPlayer = false) {
     runtime.G.fireCd > 0
   )
     return;
+  const selected = runtime.G.auto ? runtime.G.autoTarget : runtime.G.hoverTarget;
+  if (!selected || selected.dead || selected.pendingCapture || !runtime.G.bots.includes(selected)) return;
   if (runtime.G.credits < runtime.G.bet) {
     runtime.G.auto = false;
     message("點數不足", 1.4);
@@ -257,7 +259,10 @@ export function shoot(shooter, dir, isPlayer = false) {
     if (index > 0 && runtime.G.bet <= 10 && weapon === "rifle") return;
     if (index > 0 && runtime.G.weaponCds[index] > 1e-9) return;
     runtime.G.weaponCds[index] = 1 / WEAPON_RATES[weapon];
-    const origin = member.mesh.position
+    member.mesh.updateWorldMatrix(true, true);
+    const origin = member.mesh.userData.muzzle
+      ? member.mesh.userData.muzzle.getWorldPosition(new THREE.Vector3())
+      : member.mesh.position
       .clone()
       .add(new THREE.Vector3(0, 1.55, 0));
     const direction =
@@ -301,7 +306,8 @@ export function shoot(shooter, dir, isPlayer = false) {
             : Math.max(0.03, best / 150);
     attacks.push({ origin, end, weapon, candidates, delay });
     for (const b of candidates)
-      if (!entries.has(b) || entries.get(b) > delay) entries.set(b, delay);
+      if (!entries.has(b) || entries.get(b).delay > delay)
+        entries.set(b, { delay, weapon, direction: direction.clone() });
   });
   for (const attack of attacks) {
     weaponEffect(attack.origin, attack.end, attack.weapon);
@@ -309,7 +315,7 @@ export function shoot(shooter, dir, isPlayer = false) {
   sound(runtime.G.weapons[0]);
   if (entries.size) {
     runtime.G.eligibleWagered += bet;
-    for (const [b, delay] of entries) {
+    for (const [b, attack] of entries) {
       b.hitTime = 0.18;
       if (b.mesh.userData.body?.material?.emissive) b.mesh.userData.body.material.emissive.setHex(0xffffff);
       if (Math.random() < captureProbability(b, entries.size)) {
@@ -318,7 +324,9 @@ export function shoot(shooter, dir, isPlayer = false) {
           bot: b,
           bet,
           loot: rollMobLoot(b),
-          life: delay,
+          life: attack.delay,
+          weapon: attack.weapon,
+          direction: attack.direction,
         });
       }
     }
@@ -332,6 +340,7 @@ export function settleCaptures(dt = 0, flush = false) {
       item.bot.pendingCapture = false;
       if (!item.bot.dead) {
         killBot(item.bot, "你", item.bet, item.loot);
+        if (!flush && item.weapon === 'grenade') knockMob(item.bot, item.direction);
         showHit(centerOf(item.bot), true);
       }
       item.done = true;
@@ -377,7 +386,7 @@ export function weaponEffect(origin, end, weapon) {
 
 export function knockMob(b, direction) {
   if (
-    b.dead ||
+    !b.dead ||
     b.type === "boss" ||
     runtime.G.time - (b.lastKnock ?? -10) < 0.4
   )
@@ -410,7 +419,7 @@ export function updateGrenades(dt) {
         : 0;
       if (pos.distanceTo(a.clone().addScaledVector(segment, along)) < 2.3) {
         g.seen.add(b);
-        knockMob(b, direction);
+        b.hitTime = .12;
       }
     }
     g.previous.copy(ground);
@@ -425,7 +434,7 @@ export function updateGrenades(dt) {
   }
   runtime.G.grenades = runtime.G.grenades.filter((g) => g.age < g.duration);
   for (const b of runtime.G.bots) {
-    if (b.dead || !b.airborne) continue;
+    if (!b.airborne) continue;
     b.airborne = Math.max(0, b.airborne - dt);
     moveEntity(b, b.knockVelocity.clone().multiplyScalar(dt));
     b.knockVelocity.multiplyScalar(Math.exp(-dt * 3));

@@ -5,6 +5,16 @@ Source: https://quaternius.com/packs/zombieapocalypsekit.html
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
 
 - player/ranger.gltf: Characters_Matt_SingleWeapon.gltf
+- player/explorer.gltf: Characters_Shaun.gltf
+- enemies/trooper.gltf: Characters_Matt.gltf (runtime olive uniform tint)
+- enemies/civilian.gltf: Characters_Lis.gltf
+- enemies/scout.gltf: Characters_Sam.gltf
+- enemies/ribcage.gltf: Zombie_Ribcage.gltf
+- bosses/mutant.gltf: Zombie_Arm.gltf
+- vehicles/pickup.gltf: Vehicle_Pickup_Armored.gltf
+- vehicles/truck.gltf: Vehicle_Truck_Armored.gltf
+
+Shield and scope accessories are original procedural equipment in mobVisuals.js.
 - enemies/infected.gltf: Zombie_Basic.gltf
 - enemies/heavy.gltf: Zombie_Chubby.gltf
 - weapons/rifle.gltf: Rifle.gltf

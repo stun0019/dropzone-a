@@ -243,6 +243,7 @@ export function makeBoss(variant = 0) {
   root.scale.setScalar(spec.scale);
   root.userData.baseScale = spec.scale;
   root.userData.bossVariant = variant;
+  if (root.userData.assetClone) return root;
   const bodyMaterial = root.userData.body?.material;
   const bodyColor = Array.isArray(bodyMaterial) ? bodyMaterial[0]?.color : bodyMaterial?.color;
   bodyColor?.setHex(spec.color);

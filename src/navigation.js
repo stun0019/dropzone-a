@@ -313,7 +313,7 @@ export function steer(entity, dir, dt, speed) {
 
 export function animateMob(b, dt, moving) {
   updateAnimation(b.mesh, dt);
-  if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? "walk" : "idle");
+  if (b.mesh.userData.actions) playAnimation(b.mesh, moving ? (b.swarming && b.mesh.userData.actions.run ? 'run' : 'walk') : "idle");
   b.walk += dt * b.speed;
   for (const wheel of b.mesh.userData.wheels || [])
     if (moving) wheel.rotation.x += dt * b.speed * 2;

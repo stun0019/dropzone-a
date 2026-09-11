@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { updateExplorerPose } from './explorer.js';
 
 const aliases = {
   idle: ["idle", "stand", "breathing"],
@@ -44,4 +45,5 @@ export function playAnimation(actor, name, fade = 0.16) {
 
 export function updateAnimation(actor, dt) {
   actor?.userData?.mixer?.update(dt);
+  if (actor) updateExplorerPose(actor);
 }

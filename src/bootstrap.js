@@ -124,8 +124,9 @@ export function initializeRuntime() {
       runtime.pointer = { x: e.clientX, y: e.clientY };
       aimFromScreen(e.clientX, e.clientY);
       runtime.mouseDown = true;
-    } else if (e.clientX > innerWidth * 0.45) {
+    } else {
       runtime.aimPointer = e.pointerId;
+      runtime.mobileFiring = true;
       runtime.pointer = { x: e.clientX, y: e.clientY };
       const r = runtime.canvas.getBoundingClientRect();
       aimFromScreen(e.clientX, e.clientY);
@@ -133,7 +134,7 @@ export function initializeRuntime() {
   });
   runtime.canvas.addEventListener("pointerup", (e) => {
     if (!runtime.coarse) runtime.mouseDown = false;
-    if (e.pointerId === runtime.aimPointer) runtime.aimPointer = null;
+    if (e.pointerId === runtime.aimPointer) { runtime.aimPointer = null; runtime.mobileFiring = false; }
   });
   runtime.canvas.addEventListener("pointerleave", () => {
     if (!runtime.mouseDown && !runtime.coarse) {
@@ -143,6 +144,7 @@ export function initializeRuntime() {
   });
   runtime.canvas.addEventListener("pointercancel", (e) => {
     runtime.mouseDown = false;
+    runtime.mobileFiring = false;
     if (e.pointerId === runtime.aimPointer) runtime.aimPointer = null;
   });
   runtime.joy = runtime.$("joy");

@@ -56,11 +56,9 @@ export function uiText(
   c.fillStyle = color;
   c.textAlign = align;
   c.textBaseline = "middle";
-  if (bold || size >= 24) {
-    c.strokeStyle = '#102238'; c.lineWidth = size >= 30 ? 4 : 2;
-    c.lineJoin = 'round'; c.strokeText(String(text), x, y);
-  }
+  c.shadowColor = '#00000066'; c.shadowBlur = 2; c.shadowOffsetY = 1;
   c.fillText(String(text), x, y);
+  c.shadowBlur = 0; c.shadowOffsetY = 0;
 }
 
 export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
@@ -76,16 +74,15 @@ export function uiPanel(x, y, w, h, accent = "#64848c", fill = "#101d29ee") {
   c.lineTo(x, y + 12);
   c.closePath();
   const gradient = c.createLinearGradient(x, y, x, y + h);
-  gradient.addColorStop(0, '#315685f5');
-  gradient.addColorStop(.15, '#24416bf5');
-  gradient.addColorStop(1, '#172b4bf5');
+  gradient.addColorStop(0, '#202a30f5');
+  gradient.addColorStop(1, '#10191ef5');
   c.fillStyle = gradient;
   c.fill();
   c.shadowBlur = 0; c.shadowOffsetY = 0;
-  c.strokeStyle = '#071a32';
-  c.lineWidth = 5;
+  c.strokeStyle = '#080f14';
+  c.lineWidth = 2;
   c.stroke();
-  c.strokeStyle = accent; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = '#65747766'; c.lineWidth = 1; c.stroke();
   c.fillStyle = accent;
   c.fillRect(x + 14, y, 32, 2);
   c.save();
@@ -116,19 +113,18 @@ export function uiButton(label, x, y, w, h, fn, active = false) {
   );
   const c = runtime.nativeUI.ctx;
   const face = c.createLinearGradient(0, y + 3, 0, y + h - 4);
-  face.addColorStop(0, active ? '#ffe994' : '#75cbff');
-  face.addColorStop(.18, active ? '#f8be3f' : '#399de9');
-  face.addColorStop(1, active ? '#d17b14' : '#2062b6');
+  face.addColorStop(0, active ? '#e6c27b' : '#425158');
+  face.addColorStop(1, active ? '#aa7b35' : '#28343b');
   c.fillStyle = face;
   c.fillRect(x + 5, y + 5, w - 10, h - 12);
-  c.fillStyle = active ? '#a25c0e' : '#124780';
+  c.fillStyle = active ? '#755329' : '#142027';
   c.fillRect(x + 5, y + h - 8, w - 14, 4);
   uiText(
     label,
     x + w / 2,
     y + h / 2,
     17,
-    '#ffffff',
+    active ? '#172127' : '#eef3f1',
     "center",
     true,
   );
@@ -171,8 +167,8 @@ export function uiIcon(type, x, y, size, color = "#eac17a") {
 export function uiRadar() {
   const c = runtime.nativeUI.ctx,
     x = 30,
-    y = 90,
-    w = 164;
+    y = 86,
+    w = 122;
   uiPanel(x - 6, y - 24, w + 12, w + 42, "#557c7b");
   uiText("戰術雷達", x, y - 10, 12, "#96b8bd");
   c.save();
@@ -435,7 +431,7 @@ export function drawNativeUI(now) {
             "游標 / 觸控：瞄準射擊",
             "AUTO：開啟戰術設定",
             "空投：靠近後隨機裝備",
-            "有效命中回報 98.5% · 空射扣 BET",
+            "點選目標開火 · 點空地不扣 BET",
           ]
         : [
             "捕獲目標  " + runtime.G.kills,
@@ -518,15 +514,15 @@ export function drawNativeUI(now) {
       uiText(detail, 1016, cardY + 46, 13, "#adc1c7");
       cardY += 77;
     }
-    uiPanel(26, 292, 210, 86, "#6d9390");
-    uiText("空投情報", 42, 313, 13, "#a4baba");
-    uiText(runtime.G.intel + " / 100", 220, 313, 17, "#e7d39e", "right", true);
+    uiText("補給 " + runtime.G.supplies.length + "/3", 30, 249, 12, "#edf2e8");
+    uiText(runtime.G.intel + "%", 152, 249, 12, "#e7d39e", "right", true);
     c.fillStyle = "#385251";
-    c.fillRect(42, 334, 178, 4);
+    c.fillRect(30, 262, 122, 3);
     c.fillStyle = "#dab777";
-    c.fillRect(42, 334, 178 * Math.min(1, runtime.G.intel / 100), 4);
-    uiText("場上補給箱 " + runtime.G.supplies.length + " / 3", 42, 359, 13);
+    c.fillRect(30, 262, 122 * Math.min(1, runtime.G.intel / 100), 3);
     uiPanel(258, 616, 764, 86, "#b79258");
+    c.fillStyle = '#77888a44';
+    c.fillRect(434, 634, 1, 48); c.fillRect(683, 634, 1, 48); c.fillRect(876, 634, 1, 48);
     uiText("BET", 280, 636, 13, "#a2b5bb");
     uiButton("−", 278, 654, 42, 34, () => setBet(runtime.selectedBet - 1));
     uiText(runtime.G.bet, 349, 672, 28, "#ffe0a0", "center", true);
@@ -547,7 +543,7 @@ export function drawNativeUI(now) {
       702,
       675,
       26,
-      "#d1df9b",
+      "#e9c584",
       "left",
       true,
     );
@@ -561,16 +557,17 @@ export function drawNativeUI(now) {
         runtime.tacticalPanel = true;
         resetInput();
       },
-      runtime.G.auto,
+      true,
     );
     runtime.G.weapons.forEach((w, i) => {
       const x = 361 + i * 190;
-      uiPanel(x, 568, 180, 35, "#385462");
+      // Equipment is a slim status rail integrated with the command dock.
+      if (i === 0) uiPanel(350, 588, 580, 28, '#5f7f7d');
       uiText(
         ["P1", "L", "R"][i] + " / " + WEAPONS[w],
         x + 13,
-        586,
-        14,
+        602,
+        11,
         "#b7ced2",
       );
     });

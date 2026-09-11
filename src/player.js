@@ -140,7 +140,7 @@ export function pickHoveredMob() {
   let picked = null,
     best = limit;
   for (const b of runtime.G.bots) {
-    if (b.dead) continue;
+    if (b.dead || b.pendingCapture) continue;
     b.mesh.updateWorldMatrix(true, true);
     const bounds = new THREE.Box3().setFromObject(b.mesh).expandByScalar(0.15);
     const point = runtime.raycaster.ray.intersectBox(
@@ -259,8 +259,9 @@ export function updatePlayer(dt) {
   p.yaw = Math.atan2(-dir.x, -dir.z);
   p.mesh.rotation.y = p.yaw;
   const firing =
-    ((runtime.mouseDown || runtime.keys.has(" ")) && !runtime.coarse) ||
-    (runtime.mobileFiring && runtime.coarse) ||
+    (!!runtime.G.hoverTarget &&
+      (((runtime.mouseDown || runtime.keys.has(" ")) && !runtime.coarse) ||
+      (runtime.mobileFiring && runtime.coarse))) ||
     (target &&
       runtime.tactics.fire &&
       target.mesh.position.distanceTo(p.mesh.position) < 33 &&
