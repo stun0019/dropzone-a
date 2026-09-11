@@ -10,8 +10,8 @@ import { worldToScreen } from "./combat.js";
 export function initNativeUI() {
   const ui = runtime.nativeUI;
   ui.surface = document.createElement("canvas");
-  ui.surface.width = 1920;
-  ui.surface.height = 1080;
+  ui.surface.width = runtime.coarse ? 1280 : 1920;
+  ui.surface.height = runtime.coarse ? 720 : 1080;
   ui.ctx = ui.surface.getContext("2d");
   ui.texture = new THREE.CanvasTexture(ui.surface);
   ui.texture.colorSpace = THREE.SRGBColorSpace;
@@ -384,11 +384,12 @@ export function drawNativeUI(now) {
   const ui = runtime.nativeUI;
   if (!ui.ctx) return;
   // A 30 Hz UI texture update keeps text sharp without uploading at full render rate.
-  if (now - ui.stamp < 32) return;
+  if (now - ui.stamp < (runtime.coarse ? 50 : 32)) return;
   ui.stamp = now;
   ui.hits = [];
   const c = ui.ctx;
-  c.setTransform(1.5, 0, 0, 1.5, 0, 0);
+  const uiScale = ui.surface.width / 1280;
+  c.setTransform(uiScale, 0, 0, uiScale, 0, 0);
   c.clearRect(0, 0, 1280, 720);
   if (runtime.state === "menu" || runtime.state === "result") {
     const shade = c.createLinearGradient(0, 0, 1280, 0);

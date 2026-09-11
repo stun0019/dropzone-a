@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { runtime } from "./runtime.js";
 import { WORLD, TAU } from "./config.js";
 import { box, cylinder, mat } from "./models.js";
-import { surfaceTexture, addRoadPaint } from "./art.js";
+import { surfaceTexture, terrainTexture, addRoadPaint } from "./art.js";
+import { ROADS, overlapsRoad } from './roads.js';
+import { batchEnvironment, dressDistricts } from './environment.js';
 
 export function createWorld() {
   runtime.scene = new THREE.Scene();
@@ -12,12 +14,13 @@ export function createWorld() {
   runtime.camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 150);
   runtime.renderer = new THREE.WebGLRenderer({
     canvas: runtime.canvas,
-    antialias: true,
+    antialias: !runtime.coarse,
     powerPreference: "high-performance",
   });
-  runtime.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  runtime.renderRatio = Math.min(devicePixelRatio, runtime.coarse ? 1 : 1.5);
+  runtime.renderer.setPixelRatio(runtime.renderRatio);
   runtime.renderer.setSize(1280, 720, false);
-  runtime.renderer.shadowMap.enabled = !runtime.reduced;
+  runtime.renderer.shadowMap.enabled = !runtime.reduced && !runtime.coarse;
   runtime.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   runtime.renderer.outputColorSpace = THREE.SRGBColorSpace;
   runtime.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -36,10 +39,16 @@ export function createWorld() {
   sun.shadow.normalBias = 0.04;
   sun.shadow.bias = -0.00015;
   runtime.scene.add(sun);
+  if (runtime.coarse) {
+    const shadows=new THREE.InstancedMesh(new THREE.CircleGeometry(1,12),
+      new THREE.MeshBasicMaterial({color:0x19231c,transparent:true,opacity:.22,depthWrite:false}),512);
+    shadows.count=0; shadows.frustumCulled=false;
+    runtime.scene.add(shadows); runtime.contactShadows=shadows;
+  }
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(WORLD * 2, WORLD * 2),
-    new THREE.MeshStandardMaterial({ color: 0x8ec25e, map: surfaceTexture('ground'), roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, map: terrainTexture(false), roughness: 1 }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -51,11 +60,7 @@ export function createWorld() {
     map: surfaceTexture('road'),
     roughness: 1,
   });
-  for (const r of [
-    { x: 0, z: 0, w: 10, d: WORLD * 2 },
-    { x: 0, z: 0, w: WORLD * 2, d: 9 },
-    { x: 30, z: -25, w: 8, d: WORLD * 1.5 },
-  ]) {
+  for (const r of ROADS) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), roadMat);
     road.rotation.x = -Math.PI / 2;
     road.position.set(r.x, 0.012, r.z);
@@ -79,12 +84,19 @@ export function createWorld() {
     crowns: [],
   };
 
+  const previous = new Set(runtime.scene.children);
   addBuildings();
   addTrees();
+  const districts = dressDistricts(runtime.scene);
+  runtime.coverBounds.push(...districts.userData.coverBounds);
   runtime.scene.updateMatrixWorld(true);
   for (const o of runtime.scene.children)
     if (o.userData.cover)
       runtime.coverBounds.push(new THREE.Box3().setFromObject(o));
+  const staticRoots = runtime.scene.children.filter(o=>!previous.has(o));
+  // Keep crown material references alive for stage palette changes.
+  batchEnvironment(runtime.scene, staticRoots);
+  runtime.scene.userData.terrainTheme.crowns = runtime.scene.children.filter(o=>o.isMesh && o.material.color?.getHex()===0x2f5535);
 
   runtime.raycaster = new THREE.Raycaster();
   runtime.aimPoint = new THREE.Vector3(0, 0, -10);
@@ -95,7 +107,8 @@ export function applyStageTheme(stage) {
   const theme = runtime.scene.userData.terrainTheme;
   if (!theme) return;
   const desert = stage === 2;
-  theme.ground.material.color.setHex(desert ? 0xe2b771 : 0x8ec25e);
+  theme.ground.material.color.setHex(0xffffff);
+  theme.ground.material.map=terrainTexture(desert);
   theme.roadMat.color.setHex(desert ? 0x88714d : 0x404643);
   theme.grid.visible = false;
   runtime.scene.background.setHex(desert ? 0xf0cf9b : 0xa5cde0);
@@ -126,7 +139,11 @@ export function addBuildings() {
     [-16, -77, 9, 6, 10],
     [16, 77, 9, 6, 8],
   ];
-  for (const [x, z, w, h, d] of specs) {
+  for (let [x, z, w, h, d] of specs) {
+    while (overlapsRoad(x,z,w+1,d+1,1)) {
+      if (Math.abs(z)<7+d/2) z += z<0 ? -2 : 2;
+      else x += x<0 ? -2 : 2;
+    }
     const root = new THREE.Group();
     const b = box(w, h, d, Math.random() > 0.5 ? 0x8d8068 : 0x6e786f);
     b.position.y = h / 2;
@@ -134,6 +151,14 @@ export function addBuildings() {
     const roof = box(w + 1, 0.35, d + 1, 0x343b37);
     roof.position.y = h + 0.18;
     root.add(roof);
+    const plinth = box(w+.5,.3,d+.5,0x454b47);
+    plinth.position.y=.15; root.add(plinth);
+    for (const side of [-1,1]) {
+      const trim=box(w+.8,.65,.2,0xa89977);
+      trim.position.set(0,h-.65,side*d/2); root.add(trim);
+    }
+    const awning=box(w*.58,.16,1.2,0x5b7774);
+    awning.position.set(0,2.9,d/2+.4); awning.rotation.x=.12; root.add(awning);
     // Roof hardware and facade details stay inside the original cover footprint.
     const vent = box(w * .25, .55, d * .25, 0x697574);
     vent.position.set(-w * .2, h + .62, -d * .18);
@@ -185,6 +210,7 @@ export function addBuildings() {
     [-39, -28],
   ];
   for (const [x, z] of crates) {
+    if (overlapsRoad(x,z,4,4,1)) continue;
     const root = new THREE.Group();
     const count = Math.random() > 0.55 ? 2 : 1;
     for (let i = 0; i < count; i++) {
@@ -204,7 +230,7 @@ export function addTrees() {
       r = runtime.rand(18, WORLD - 7);
     const x = Math.cos(a) * r,
       z = Math.sin(a) * r;
-    if (Math.abs(x) < 7 || Math.abs(z) < 6) continue;
+    if (overlapsRoad(x,z,4,4,1)) continue;
     const root = new THREE.Group();
     const trunk = cylinder(0.28, 2.2, 0x5b4935, 7);
     trunk.position.y = 1.1;

@@ -14,6 +14,7 @@ import { sound, updateAudio } from "./audio.js";
 import { releaseEffect } from "./navigation.js";
 import { drawMap, updateHud } from "./hud.js";
 import { drawNativeUI } from "./ui.js";
+const shadowTransform = new THREE.Object3D();
 
 export function updateCamera(dt) {
   const p = runtime.G.player.mesh.position;
@@ -113,12 +114,26 @@ export function step(dt) {
 
 export function render() {
   if (!runtime.renderer) return;
+  if (runtime.contactShadows) {
+    let count=0;
+    const actors=runtime.G ? [runtime.G.player,...(runtime.G.followers || []),...runtime.G.bots] : [];
+    for (const actor of actors) {
+      if (!actor?.mesh || actor.dead || count>=512) continue;
+      shadowTransform.position.copy(actor.mesh.position).setY(.04);
+      shadowTransform.rotation.set(-Math.PI/2,0,0);
+      shadowTransform.scale.setScalar((actor.radius || .65)*1.3);
+      shadowTransform.updateMatrix(); runtime.contactShadows.setMatrixAt(count++,shadowTransform.matrix);
+    }
+    runtime.contactShadows.count=count;
+    runtime.contactShadows.instanceMatrix.needsUpdate=true;
+  }
   if (runtime.state === "menu") {
     runtime.camera.position.set(14, 17, 20);
     runtime.camera.lookAt(0, 1, 0);
   }
   runtime.renderer.render(runtime.scene, runtime.camera);
-  drawMap();
+  const now = performance.now();
+  if (now - (runtime.mapStamp || 0) > 100) { drawMap(); runtime.mapStamp = now; }
   if (runtime.nativeUI.scene) {
     drawNativeUI(performance.now());
     runtime.renderer.autoClear = false;
@@ -129,6 +144,18 @@ export function render() {
 }
 
 export function loop(now) {
+  if (document.hidden) { runtime.last=now; requestAnimationFrame(loop); return; }
+  if (runtime.coarse && runtime.last && now-runtime.last < 1000/60-1) {
+    requestAnimationFrame(loop); return;
+  }
+  if (runtime.coarse) {
+    runtime.frameAverage = (runtime.frameAverage || 16.7)*.97 + Math.min(100,now-runtime.last)*.03;
+    if (now-(runtime.qualityStamp||0)>4000) {
+      const ratio = runtime.frameAverage > 26 ? Math.max(.65,runtime.renderRatio-.1) : runtime.frameAverage < 18 ? Math.min(1,runtime.renderRatio+.05) : runtime.renderRatio;
+      if (ratio!==runtime.renderRatio) { runtime.renderRatio=ratio; runtime.renderer.setPixelRatio(ratio); }
+      runtime.qualityStamp=now;
+    }
+  }
   updateAudio();
   const dt = Math.min(0.05, (now - runtime.last) / 1000 || 0);
   runtime.last = now;

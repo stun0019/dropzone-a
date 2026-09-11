@@ -8,6 +8,9 @@ import { patrolDestination } from "./player.js";
 import { steer, animateMob, visibleTarget } from "./navigation.js";
 import { makeBeam, impactEffect } from "./combat.js";
 import { playAnimation } from "./assets.js";
+import { roadSpawn, driveRoad } from './roads.js';
+import { SpatialGrid } from './spatial.js';
+const neighbors = new SpatialGrid();
 
 export function randomSpawn(min = 12, max = WORLD * 0.84) {
   const a = runtime.rand(0, TAU),
@@ -45,7 +48,7 @@ export function spawnBot(i, boss = false, eventPos = null) {
           0,
           runtime.rand(eventPos.minZ + 4, eventPos.maxZ - 4),
         )
-      : randomSpawn();
+      : spec?.vehicle ? roadSpawn() : randomSpawn();
     if (
       collides(candidate, radius) ||
       candidate.distanceToSquared(runtime.G.player.mesh.position) <
@@ -135,6 +138,7 @@ export function moveEntity(entity, delta) {
 }
 
 export function updateBots(dt) {
+  neighbors.rebuild(runtime.G.bots);
   const zone = runtime.G.infection?.sector;
   const inside = (p) => zone && p.x >= zone.minX && p.x <= zone.maxX && p.z >= zone.minZ && p.z <= zone.maxZ;
   const playerInside = inside(runtime.G.player.mesh.position);
@@ -170,7 +174,7 @@ export function updateBots(dt) {
       if (!peaceful && !b.target && b.rest <= 0) {
         b.target = null;
         let best = frenzy ? 28 * 28 : 12 * 12;
-        for (const o of runtime.G.bots) {
+        for (const o of neighbors.near(b.mesh.position, frenzy ? 28 : 12)) {
           if (o.dead || o.faction === b.faction || o.faction === "civilian")
             continue;
           const d = o.mesh.position.distanceToSquared(b.mesh.position);
@@ -232,7 +236,7 @@ export function updateBots(dt) {
       swarm || !b.target ||
       distance > (ranged ? 7 : toxic ? 5 : b.type === "boss" ? 3 : 1.6);
     const travel = moving ? b.dir.clone() : new THREE.Vector3();
-    for (const other of runtime.G.bots) {
+    for (const other of neighbors.near(b.mesh.position, 8)) {
       if (other === b || other.dead) continue;
       const away = b.mesh.position.clone().sub(other.mesh.position).setY(0),
         distance = away.length();
@@ -250,7 +254,10 @@ export function updateBots(dt) {
       const away = b.mesh.position.clone().sub(runtime.G.player.mesh.position).setY(0);
       if (away.lengthSq() < 64 && away.lengthSq() > .01) travel.addScaledVector(away.normalize(), 3);
     }
-    if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.25 : 1));
+    if (spec?.vehicle) {
+      driveRoad(b, dt, b.speed);
+      travel.copy(b.dir);
+    } else if (travel.lengthSq() > 0.01) steer(b, travel.normalize(), dt, b.speed * (frenzy ? 1.25 : 1));
     const aim = b.target
       ? b.target.mesh.position.clone().sub(b.mesh.position).normalize()
       : b.dir;
@@ -264,7 +271,13 @@ export function updateBots(dt) {
         Math.cos(yaw - b.mesh.rotation.y),
       );
     b.mesh.rotation.y += diff * Math.min(1, dt * 7);
-    animateMob(b, dt, moving);
+    const cameraDistance = b.mesh.position.distanceToSquared(runtime.camera.position);
+    b.animationElapsed = (b.animationElapsed || 0) + dt;
+    const animationInterval = cameraDistance > 6400 ? .25 : cameraDistance > 1600 ? .1 : runtime.coarse ? 1/30 : 0;
+    if (b.animationElapsed >= animationInterval) {
+      animateMob(b, b.animationElapsed, moving || !!spec?.vehicle);
+      b.animationElapsed = 0;
+    }
     if (b.mesh.userData.turret)
       b.mesh.userData.turret.rotation.y = aimYaw - b.mesh.rotation.y;
     if (
