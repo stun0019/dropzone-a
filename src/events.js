@@ -130,8 +130,12 @@ export function updateWeaponModels() {
   [runtime.G.player, ...runtime.G.followers].forEach((member, index) => {
     const weapon = runtime.G.weapons[index],
     gun = member.mesh.userData.gun;
-    if (attachWeapon(member, weapon)) return;
+    if (member.visualWeapon === weapon) return;
+    if (attachWeapon(member, weapon)) { member.visualWeapon = weapon; return; }
     if (!gun) return;
+    if (member.mesh.userData.weaponModel) member.mesh.userData.weaponModel.visible = false;
+    gun.visible = true;
+    member.baseGunScale ||= gun.scale.clone();
     gun.scale.set(
       weapon === "rocket"
         ? 3
@@ -149,7 +153,8 @@ export function updateWeaponModels() {
             ? 0.35
             : 1,
     );
-    gun.material.color.setHex(
+    gun.scale.multiply(member.baseGunScale);
+    const tint =
       weapon === "laser"
         ? 0x438b9e
         : weapon === "rocket"
@@ -158,8 +163,19 @@ export function updateWeaponModels() {
             ? 0x54733c
             : weapon === "shotgun"
               ? 0x94704d
-              : 0x1c2421,
-    );
+              : 0x1c2421;
+    gun.traverse(node => {
+      if (!node.isMesh) return;
+      // Imported weapons may contain several meshes and material arrays.
+      if (!node.userData.weaponTintOwned) {
+        node.material = Array.isArray(node.material)
+          ? node.material.map(m => m.clone()) : node.material?.clone();
+        node.userData.weaponTintOwned = true;
+      }
+      for (const material of Array.isArray(node.material) ? node.material : [node.material])
+        material?.color?.setHex(tint);
+    });
+    member.visualWeapon = weapon;
   });
 }
 

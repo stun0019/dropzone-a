@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { runtime } from '../src/runtime.js';
+import { updateWeaponModels } from '../src/events.js';
+
+const shared = new THREE.MeshStandardMaterial();
+const gun = new THREE.Group();
+gun.scale.setScalar(.25);
+const mesh = new THREE.Mesh(new THREE.BoxGeometry(), [shared, shared]);
+gun.add(mesh);
+const member = { mesh: new THREE.Group() };
+member.mesh.userData.gun = gun;
+runtime.G = { player: member, followers: [], weapons: ['rocket'] };
+assert.doesNotThrow(() => updateWeaponModels());
+assert.equal(gun.scale.x, .75);
+assert.notEqual(mesh.material[0], shared);
+assert.equal(shared.color.getHex(), 0xffffff);
+updateWeaponModels();
+assert.equal(gun.scale.x, .75, 'Unchanged equipment must not compound scale');
+runtime.G.weapons[0] = 'shotgun';
+updateWeaponModels();
+assert.equal(gun.scale.x, .45, 'New equipment uses the authored base scale');

@@ -207,8 +207,9 @@ export function updateBots(dt) {
         const playerPos = runtime.G.player.mesh.position;
         const toPlayer = playerPos.clone().sub(b.mesh.position).setY(0);
         const playerDistance = toPlayer.length();
-        const angle = (slot % 12) * TAU / 12 + b.orbitPhase + runtime.G.time * .12;
-        const ring = slot < 8 ? 8.5 + (slot % 3) * .7 : 14 + (slot % 4) * 1.2;
+        // Stable individual destinations: distance sorting must not rotate slots.
+        const angle = b.orbitPhase + runtime.G.time * .12;
+        const ring = 5 + (Math.abs(b.orbitPhase) % 4);
         if (playerDistance > 19) {
           b.chaseState = 'chase';
           b.dir.copy(toPlayer).normalize();
@@ -276,7 +277,9 @@ export function updateBots(dt) {
     }
     if (swarm) {
       const away = b.mesh.position.clone().sub(runtime.G.player.mesh.position).setY(0);
-      if (away.lengthSq() < 64 && away.lengthSq() > .01) travel.addScaledVector(away.normalize(), 3);
+      const distance = away.length();
+      if (distance < 4 && distance > .01)
+        travel.addScaledVector(away.normalize(), (1 - distance / 4) * 1.6);
     }
     const beforeMove = b.mesh.position.clone();
     if (spec?.vehicle) {

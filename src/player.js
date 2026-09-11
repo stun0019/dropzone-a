@@ -174,10 +174,13 @@ export function updatePlayer(dt) {
     z = runtime.joyVec.y;
   }
   const manualMove = Math.hypot(x, z) > 0.1;
+  // Release the stick without AUTO immediately pulling the squad away again.
+  p.manualMoveHold = manualMove ? .65 : Math.max(0, (p.manualMoveHold || 0) - dt);
+  const autoMove = runtime.G.auto && runtime.tactics.move && p.manualMoveHold === 0;
   runtime.G.manualApproach = manualMove;
   const target = runtime.G.auto ? chooseTarget(dt) : null;
   const move = new THREE.Vector3(x, 0, z);
-  if (target && !manualMove && runtime.tactics.move) {
+  if (target && autoMove) {
     const d = target.mesh.position.clone().sub(p.mesh.position);
     d.y = 0;
     const distance = d.length(),
@@ -204,8 +207,7 @@ export function updatePlayer(dt) {
   }
   let supplyGoal = null;
   if (
-    runtime.G.auto &&
-    runtime.tactics.move &&
+    autoMove &&
     runtime.tactics.supply &&
     !manualMove &&
     runtime.G.supplies.length
@@ -222,7 +224,8 @@ export function updatePlayer(dt) {
     else move.set(0, 0, 0);
     runtime.G.manualApproach = true;
   }
-  const desiredSpeed = move.lengthSq() > 0.01 ? (p.motion?.speed || MOTION_PROFILES.player.speed) : 0;
+  const inputStrength = manualMove ? Math.min(1, (Math.hypot(x, z) - .1) / .9) : 1;
+  const desiredSpeed = move.lengthSq() > 0.01 ? (p.motion?.speed || MOTION_PROFILES.player.speed) * inputStrength : 0;
   const currentSpeed = smoothMotion(p, desiredSpeed, dt, p.motion || MOTION_PROFILES.player);
   if (move.lengthSq() > 0.01) p.lastMoveDir = move.clone().normalize();
   const travelDirection = move.lengthSq() > 0.01
@@ -230,7 +233,7 @@ export function updatePlayer(dt) {
     : (p.lastMoveDir?.clone() || new THREE.Vector3());
   const beforeMove = p.mesh.position.clone();
   if (travelDirection.lengthSq() > 0.01 && currentSpeed > .01) {
-    if (runtime.G.auto && !manualMove && (supplyGoal || target)) {
+    if (autoMove && move.lengthSq() > .01 && (supplyGoal || target)) {
       if (!navigateTo(p, supplyGoal || target.mesh.position, dt, currentSpeed)) {
         if (target) target.avoidUntil = runtime.G.time + 4;
         runtime.G.autoTarget = null;
@@ -242,6 +245,14 @@ export function updatePlayer(dt) {
     }
   }
   const actualMove = p.mesh.position.distanceToSquared(beforeMove) > .000001;
+  // Formation follows actual travel, independently of the weapon's heading.
+  p.formationYaw ??= p.yaw || 0;
+  if (actualMove) {
+    const displacement = p.mesh.position.clone().sub(beforeMove);
+    const travelYaw = Math.atan2(-displacement.x, -displacement.z);
+    const turn = Math.atan2(Math.sin(travelYaw - p.formationYaw), Math.cos(travelYaw - p.formationYaw));
+    p.formationYaw += turn * (1 - Math.exp(-dt * 5));
+  }
   if (p.mesh.userData.actions) playAnimation(p.mesh, currentSpeed > .12 && actualMove ? "walk" : "idle");
   p.walk = (p.walk || 0) + dt * currentSpeed * (p.motion?.legRate || 1);
   for (let i = 0; i < (p.mesh.userData.legs?.children || []).length; i++)
@@ -252,16 +263,16 @@ export function updatePlayer(dt) {
   if (runtime.pointer && !runtime.G.auto)
     aimFromScreen(runtime.pointer.x, runtime.pointer.y);
   runtime.G.hoverTarget = runtime.G.auto ? null : pickHoveredMob();
+  const manualFire = !!runtime.G.hoverTarget &&
+    ((!runtime.coarse && (runtime.mouseDown || runtime.keys.has(' '))) ||
+      (runtime.coarse && runtime.mobileFiring));
   let dir;
-  if (target) dir = target.mesh.position.clone().sub(p.mesh.position);
-  else
-    dir = (
-      runtime.G.hoverTarget
-        ? runtime.G.hoverTarget.mesh.position
-        : runtime.aimPoint
-    )
-      .clone()
-      .sub(p.mesh.position);
+  if (manualFire) dir = runtime.G.hoverTarget.mesh.position.clone().sub(p.mesh.position);
+  else if (target && runtime.tactics.fire) dir = target.mesh.position.clone().sub(p.mesh.position);
+  else if (manualMove) dir = new THREE.Vector3(x, 0, z);
+  else if (actualMove) dir = p.mesh.position.clone().sub(beforeMove);
+  else if (!runtime.coarse && runtime.pointer) dir = runtime.aimPoint.clone().sub(p.mesh.position);
+  else dir = new THREE.Vector3(-Math.sin(p.yaw || 0), 0, -Math.cos(p.yaw || 0));
   dir.y = 0;
   if (dir.lengthSq() < 0.01) dir.set(0, 0, -1);
   else dir.normalize();
@@ -291,7 +302,7 @@ export function updateFollowers(dt, snap = false) {
   for (const f of runtime.G.followers || []) {
     const offset = new THREE.Vector3(f.side * 2.1, 0, 0.9).applyAxisAngle(
       runtime.UP,
-      p.yaw,
+      p.formationYaw ?? p.yaw,
     );
     const desired = p.mesh.position.clone().add(offset);
     // Tighten formation beside cover rather than placing a follower inside it.
@@ -304,7 +315,10 @@ export function updateFollowers(dt, snap = false) {
     }
     const before = f.mesh.position.clone(),
       distance = desired.distanceTo(before);
-    const desiredSpeed = distance > 0.12 ? Math.min(f.motion?.speed || 7.4, distance * 5) : 0;
+    // Different arrival/departure thresholds prevent tiny correction steps.
+    if (distance > .55) f.repositioning = true;
+    else if (distance < .18) f.repositioning = false;
+    const desiredSpeed = f.repositioning ? Math.min(f.motion?.speed || 7.4, distance * 4) : 0;
     const currentSpeed = smoothMotion(f, desiredSpeed, dt, f.motion || MOTION_PROFILES.follower);
     if (currentSpeed > .01) navigateTo(f, desired, dt, currentSpeed);
     const angle = Math.atan2(
