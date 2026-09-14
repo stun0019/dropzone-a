@@ -6,6 +6,7 @@ import { runtime } from "./runtime.js";
 import { setupActorAnimation, playAnimation, updateAnimation } from "./animation.js";
 import { setupExplorer } from './explorer.js';
 import { equipMobVisual } from './mobVisuals.js';
+import { runModelQueue, withModelTimeout } from './modelQueue.js';
 
 const loader = new GLTFLoader();
 const cache = new Map();
@@ -127,21 +128,37 @@ export function modelStatus() {
 export function isModelReady(key) { return cache.get(key)?.gltf != null; }
 
 export async function preloadModels(onProgress = () => {}) {
-  const entries = Object.entries(MODEL_CONFIG);
+  const entries = Object.entries(MODEL_CONFIG).filter(([, spec]) => spec.preload !== false);
+  const critical = entries.filter(([key]) => ['rifle', 'player', 'zombie'].includes(key))
+    .sort(([a], [b]) => ['rifle', 'player', 'zombie'].indexOf(a) - ['rifle', 'player', 'zombie'].indexOf(b));
+  const background = entries.filter(entry => !critical.includes(entry));
   runtime.assets = { cache, failures, loaded: 0, total: entries.length, ready: false };
-  await Promise.all(entries.map(async ([key, spec], index) => {
+  runtime.assets.total = critical.length;
+  const load = async ([key, spec], core = false) => {
     try {
-      if (!downloads.has(spec.path)) downloads.set(spec.path, loader.loadAsync(spec.path));
+      if (!downloads.has(spec.path)) downloads.set(spec.path, withModelTimeout(async signal => {
+        const url = new URL(spec.path, document.baseURI);
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw new Error(`Model HTTP ${response.status}: ${spec.path}`);
+        const data = await response.arrayBuffer();
+        return loader.parseAsync(data, new URL('.', url).href);
+      }));
       const gltf = await downloads.get(spec.path);
       cache.set(key, { gltf, done: true });
     } catch (error) {
-      failures.add(key); cache.set(key, { gltf: null, done: true });
+      failures.add(key); cache.set(key, { gltf: null, done: true, error: String(error) });
     } finally {
-      runtime.assets.loaded++;
-      onProgress(runtime.assets.loaded, runtime.assets.total, key, !isModelReady(key));
+      if (core) {
+        runtime.assets.loaded++;
+        onProgress(runtime.assets.loaded, runtime.assets.total, key, !isModelReady(key));
+      } else runtime.assets.backgroundLoaded++;
     }
-  }));
+  };
+  await runModelQueue(critical, 1, entry => load(entry, true));
   runtime.assets.ready = true;
+  runtime.assets.backgroundLoaded = 0;
+  runtime.assets.backgroundTotal = background.length;
+  runtime.assets.backgroundPromise = runModelQueue(background, runtime.coarse ? 1 : 2, load);
   return runtime.assets;
 }
 

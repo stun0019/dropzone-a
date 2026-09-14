@@ -434,8 +434,8 @@ export function drawNativeUI(now) {
       runtime.state === "menu"
         ? [
             runtime.assetsReady
-              ? "模型載入完成 · 可部署"
-              : `Loading Models... ${runtime.assets.loaded || 0} / ${runtime.assets.total || 0}`,
+              ? "小隊就緒 · 可部署"
+              : `準備小隊 ${runtime.assets.loaded || 0} / ${runtime.assets.total || 3}`,
             "WASD / 搖桿：移動",
             "游標 / 觸控：瞄準射擊",
             "AUTO：開啟戰術設定",

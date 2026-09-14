@@ -7,7 +7,7 @@ import { sound } from "./audio.js";
 import { patrolDestination } from "./player.js";
 import { steer, animateMob, visibleTarget, smoothMotion } from "./navigation.js";
 import { makeBeam, impactEffect } from "./combat.js";
-import { playAnimation } from "./assets.js";
+import { playAnimation, isModelReady } from "./assets.js";
 import { roadSpawn, driveRoad } from './roads.js';
 import { SpatialGrid } from './spatial.js';
 const neighbors = new SpatialGrid();
@@ -30,9 +30,9 @@ export function spawnBot(i, boss = false, eventPos = null) {
     spec = MOB_TYPES[type];
   const variant = boss ? runtime.G.bossSerial % BOSS_TYPES.length : null;
   const pool = runtime.mobPool[type],
-    poolIndex = boss
-      ? pool.findIndex((m) => m.userData.bossVariant === variant)
-      : pool.length - 1;
+    poolIndex = pool.findIndex(m =>
+      (!boss || m.userData.bossVariant === variant) &&
+      (!isModelReady(boss ? `boss${variant}` : type) || m.userData.assetClone));
   const mesh =
     (poolIndex >= 0 ? pool.splice(poolIndex, 1)[0] : null) ||
     (boss ? makeBoss(variant) : makeMob(type));

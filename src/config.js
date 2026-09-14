@@ -183,8 +183,8 @@ export const MODEL_CONFIG = {
   boss1: { path: "./assets/models/enemies/heavy.gltf", scale: 1, rotation:[0,Math.PI,0], tint:0xa0c259 },
   boss2: { path: "./assets/models/enemies/trooper.gltf", scale: 1, rotation:[0,Math.PI,0], explorer:true, uniform:true, equipment:'shield', clips:{idle:'Idle_Gun',walk:'Walk_Gun'} },
   rifle: { path: "./assets/models/weapons/rifle.gltf", scale: 1 },
-  laser: { path: "./assets/models/weapons/laser.glb", scale: 1 },
-  shotgun: { path: "./assets/models/weapons/shotgun.glb", scale: 1 },
-  rocket: { path: "./assets/models/weapons/rocket.glb", scale: 1 },
-  grenade: { path: "./assets/models/weapons/grenade.glb", scale: 1 },
+  laser: { path: "./assets/models/weapons/laser.glb", scale: 1, preload: false },
+  shotgun: { path: "./assets/models/weapons/shotgun.glb", scale: 1, preload: false },
+  rocket: { path: "./assets/models/weapons/rocket.glb", scale: 1, preload: false },
+  grenade: { path: "./assets/models/weapons/grenade.glb", scale: 1, preload: false },
 };
